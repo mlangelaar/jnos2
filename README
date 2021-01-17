@@ -5,7 +5,20 @@
 
    https://www.langelaar.net/jnos2
 
- Copyright (C) 2004-2020 by Maiko Langelaar, VE4KLM
+ Copyright (C) 2004-2021 by Maiko Langelaar, VE4KLM
+ 
+January 16, 2021
+----------------
+
+Note that JNOS now has a WinRPR interface, several users have confirmed
+it is working quite well.
+
+Even bigger news (as of this evening), I have completed a prototype IP Bridge
+interface for the EA5HVK VARA HF software modem, using PPP. This lets you use
+internet protocols between 2 JNOS stations linked by VARA HF software modems.
+  (the code needs cleaning up and documentation is in the works)
+
+Has not been uploaded to GITHUB yet, see the official rsync site intead.
 
 December 17, 2020
 -----------------
