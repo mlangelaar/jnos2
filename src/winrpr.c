@@ -178,7 +178,7 @@ int winrpr_raw (struct iface *iface, struct mbuf *bp)
     bp2 = pushdown (bp, 1);
     bp2->data[0] = PARAM_DATA;
 
-    dump (iface, IF_TRACE_OUT, sp->type, bp);
+    dump (iface, IF_TRACE_OUT, sp->type, bp2);
 
     iface->rawsndcnt++;
     iface->lastsent = secclock();
