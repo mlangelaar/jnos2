@@ -1,0 +1,20 @@
+
+   Usage: aprs calls [list] *[callsign patterns]
+
+ where list argument can be any one of the following :
+
+   fwdtorf	gate these calls to RF (from the APRS IS)
+   bantorf	ban these calls from being gated to RF
+   ignorerf	ignore these calls heard on RF
+   postorf	calls allowed to gate position to RF
+   stattorf	calls allowed to gate statistics to RF
+   wxtorf	calls allowed to gate weather to RF
+   micetorf	calls allowed to gate mic-E to RF
+   obj2rf	calls allowed to gate objects to RF
+
+  * if you omit the callsign patterns, JNOS displays the content of the
+    the specified list, along with some additional help information.
+
+ You can specific new callsign patterns at any time. If a list is already
+ defined, then the previous contents are simply replaced with the latest.
+

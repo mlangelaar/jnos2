@@ -1,0 +1,183 @@
+
+ Refresh this page on every visit to ensure you get the latest information.
+
+ NOTE - this README is also available online at the following URL :
+
+   https://www.langelaar.net/jnos2/documents/development.txt
+
+ Last updated 25Jul2022, Maiko Langelaar, VE4KLM
+
+ ----
+
+ The following fixes should probably be applied to the latest official
+
+   1) One should not be passing NULL or unknown pointers to the JNOS log()
+      function, even if glibc 'might' tolerate it ? File : convers.c
+
+ The following features are under development and/or in testing phase
+
+   1) JNOS smtp server is now MIME aware when delivering to local mail areas
+
+   2) For the BBS user, the ability to save sent mail to their own area
+
+   3) Enhancements to JNOS snmp server
+
+   4) Kludge Lower Case BID manipulation for incoming 'sb' proposals
+
+   5) Multiple Heard Lists for individual ax25 ports
+
+ You can get more detail on any of these features further below, including
+ how to update source files, how to compile, how to configure if needed.
+
+ The first thing you need to do is change to your JNOS source code directory,
+ and then retrieve the latest development code using the following command :
+
+      rsync  --av www.langelaar.net::development  .
+
+ Please don't worry, this does not change existing source code !
+
+ The development code is kept in subdirectories, allowing you to pick and
+ choose which features you want to utilize, so this initial rsync doesn't
+ change any of the sources files. That part is left to you, based on the
+ instructions provided for each section further below.
+
+ Please comment on ANY of these new changes and/or procedures. This is all
+ newly revamped, so mistakes are possible, things might be broken.
+  (please let me know if that is the case)
+
+ ----
+
+ 1) JNOS smtp server is now MIME aware when delivering to local mail areas
+
+  Run the following commands to modify existing source and compile :
+
+     cp mimeaware/* .
+
+     edit your existing makefile and do the following 2 tasks :
+
+      add -DKLM_MAILIT_MIMEWARE to the end of PATCHES entry
+
+      look for the 'UNIX=' section, add j2base64.o to the end of it
+
+     make clean              (just to be safe, do a clean compile)
+
+     ./configure
+
+     make
+
+ IF you choose to enable this feature, any MIME content is now processed,
+ attachments are saved to user paths taken from ftpusers file, any base64
+ encoded content is decoded, so when a user checks their mail, all they
+ should see is text/plain and text/html, the rest will be references to
+ any saved attachments. The text/hmtl probably should go elsewhere, but
+ for now, this is how it all works. It will evolve as time permits.
+
+ Warning - this alters the BODY (not the headers) of how the incoming mail
+ will appear to the user. If you plan on forwarding your local mail areas
+ to other systems, any referred attachments will obviously not make it to
+ the remote systems you forward with - I hope that makes sense.
+
+ A couple of sysops have already told me they are happy with that :]
+
+ I will add another option for those that do NOT want the mail areas to
+ be processed by smtp, and would rather just have a mime decode version
+ of the RM (read message) and V (verbose message) commands.
+
+ Having said that, another thing to consider is if you use an email client,
+ like thunderbird, then having the SMTP processing MIME will not be great,
+ since you will no longer be able to directly access the attachments.
+
+ This is most certainly a work in progress, but it seems to work.
+
+ ----
+
+ 2) For the BBS user, the ability to save sent mail to their own area
+
+  Run the following commands to modify existing source and compile :
+
+     cp savesent/* .
+
+     edit makefile, add -DJ2_FILESENTMSGS to the end of PATCHES entry
+
+     make
+
+  I got rid of my custom function, decided to just use the existing addlist()
+  and queuejob() function calls, which is the proper way to do it anyways.
+
+  Also (for now), sent mail is just saved to the users mailbox, not a separate
+  one for sent, will revisit that down the road if anyone complains (tnx Gus).
+
+  PENDING ISSUE : if you list your messages, the TO field is not correct, for
+  some reason smtpserv is supposed to reindex when adding the new mail entry,
+  but it does not seem to be happening, yet if you manually 'index' your own
+  mailbox at the JNOS console, it fixes the listing fine. I'm investigating.
+
+ ----
+
+ 3) Enhancements to JNOS snmp server
+
+  Run the following commands to modify existing source and compile :
+
+     cp snmpd/* .
+
+     make
+ 
+ Added 2 more MIBS for sysLocation and sysContact.
+
+ JNOS should now send a proper NoSuchName (NoSuchObject) response for any
+ queries for MIBS that do not exist in the JNOS implementation, replacing
+ the previous behaviour of always responding with sysName.0 (hostname) if
+ a requested MIB could not be found or wasn't supported.
+
+ NOTE : snmpwalk only works for ifName and ifDesc (nothing else) ...
+
+ The usage (help) dialogue for the snmp command is now read from file,
+ using my recent getusage() functions - /jnos/usage/snmp.txt for most
+ configurations, you can find this file under usage subdirectory from
+ your rsync session. Here is the new syntax for snmp commands :
+
+    JNOS 2.0 - SNMP Configuration
+
+     snmp ifaces     list all ports in numerical index form
+
+     snmp ro community [ipaddr pattern]*
+
+      NOTE : if you do NOT specify an ipaddr pattern, then ANYONE is allowed
+
+     snmp sysLocation [any text]
+
+     snmp sysContact [any text]
+
+ ----
+
+ 4) Kludge Lower Case BID manipulation for incoming 'sb' proposals
+
+  Run the following commands to modify existing source and compile :
+
+     cp savesent/* .              (same source as BBS user save sent mail)
+
+     edit makefile, add -DN2NOV_REQUESTED to the end of PATCHES entry
+
+     make
+
+  This is specific for N2NOV, but others may find it useful. There are cases
+  of incoming 'sB' proposals where we need force lower casing of the BID, so
+  this code 'helps to deal with it'.
+
+ ----
+
+ 5) Multiple Heard Lists for individual ax25 ports
+
+  This is VERY experimental, introducing the concept of multiple heard lists
+  for the same ax25 port, providing a sysop with an ability to switch between
+  lists on the fly, for cases where one is switching frequencies, or might be
+  moving to a different band, throughout the day.
+
+  I do this on my robust packet HF port quite regularly, so I want stations
+  heard on a specific band, to be kept in a heard list just for that band.
+
+  This is not ready for release, despite having spent a considerable amount
+  of time on it, it's not working to my expectations, so who knows when :(
+
+ ----
+

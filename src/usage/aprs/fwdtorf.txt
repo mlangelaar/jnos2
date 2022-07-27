@@ -1,0 +1,14 @@
+
+ FWDTORF
+
+ tell JNOS to gate everything it hears on the APRS (IS) Internet System, to RF,
+ for certain callsigns and or callsign patterns.
+
+ For example, to gate APRS (IS) content from callsigns starting with VE4 as
+ well as the callsigns VE3HDU and VE3JJA :
+
+    aprs calls fwdtorf VE4 VE3JJA VE3HDU
+
+ IF you want to gate traffic to RF - BE VERY CAREFULL with these filters !!!
+   (you do NOT want to FLOOD your local frequencies with solid traffic)
+

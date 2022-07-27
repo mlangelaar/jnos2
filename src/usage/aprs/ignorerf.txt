@@ -1,0 +1,14 @@
+
+ IGNORERF
+
+ tell JNOS to simply ignore anything it hears on RF, for certain callsigns
+ and or callsign patterns.
+
+ For example, to completely ignore any APRS traffic coming from callsigns
+ starting with VA4 and also from the full callsign VE4PKT :
+
+    aprs calls ignorerf VA4 VE4PKT
+
+ IF you want to gate traffic to RF - BE VERY CAREFULL with these filters !!!
+   (you do NOT want to FLOOD your local frequencies with solid traffic)
+

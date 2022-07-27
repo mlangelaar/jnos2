@@ -1,0 +1,2494 @@
+
+                           JNOS release 2.0m.5Gz
+
+                        by Maiko Langelaar / VE4KLM
+
+          This document is intended to highlight the key additions and
+          enhancements to the original JNOS 1.11f software after it was
+           rebranded as the JNOS 2.0 project back in October of 2004.
+
+                Copyright (C) 2004-2022 by Maiko Langelaar / VE4KLM
+
+     This is a living document, started on July 9, 2020, Thursday evening
+
+                       Last updated on July 25, 2022
+
+                Document Version : JNOS-2-0m-5Gz-25-Jul-2022
+
+<< page break >>
+
+ Table Of Contents
+ -----------------
+
+ 1) Network Interfaces to Host Operating System
+
+  1.1) Enable IP Forwarding
+  1.2) Original JNOS 1.11f (slip) Method
+  1.3) JNOS 2.0 (tun) Method
+  1.4) Do NOT run JNOS as root user
+
+ 2) AX.25 Wormholes
+
+  2.1) New AXUDP Wormhole
+  2.2) Command Syntax
+  2.3) Wormholes to Dyn DNS Style Remote Hosts (for AXIP as well)
+  2.4) Maximum AXIP and AXUDP Interfaces
+
+ 3) Message Forwarding and BBS operations
+
+  3.1) Forwarding With Winlink
+
+   3.1.1) Configuring /jnos/spool/forward.bbs
+   3.1.2) Configuring JNOS winlink callsign or callsigns
+   3.1.3) Creating JNOS winlink account or accounts
+   3.1.4) Initiate Forwarding With Winlink
+   3.1.5) Receiving Attachments from Winlink Users
+   3.1.6) Composing Messages to Winlink Users
+   3.1.7) Automated (Scheduled) Forwarding
+
+  3.2) Proper Configuration of forward.bbs file
+
+   3.2.1) Monitoring forward.bbs connection sequence
+
+   3.2.2) Non Forwarding command scripts to remote systems
+           (collect remote bbs stats, routing information, etc)
+
+  3.3) Message BIDs now BASE36
+
+  3.4) Control of Duplicate Messages
+
+  3.5) Security of Forwarding Partners
+
+  3.6) Rewrite File - can now target specific FROM users (stations)
+
+  3.7) Lack of Support for Partial (Restart Data) Forwarding
+
+  3.8) Handling B2F from non-Winlink systems
+
+  3.9) Special EOL handling, specific to linfbb forwarding issue
+
+  3.10) Telnet compressed forwarding issues, IAC character, past decade plus
+
+   3.10.1) START TELNET - syntax change, new options
+
+ 4) SNMP Server (still needs updating)
+
+  4.1) IF-MIB listing
+  4.2) Configuration and Security
+  4.3) Finding Interface Index for specific JNOS interface
+  4.4) Batch Query with SNMP Client
+  4.5) Selective Query with SNMP Client
+
+ 5) Software Based Modems
+
+  5.1) Soundmodem by Thomas Sailer
+
+   5.1.1) The 2005 Experiment
+   5.1.2) Still Works in 2012
+   5.1.3) Still Works in 2015
+   5.1.4) The Latest
+
+  5.2) Baycom Board
+
+   5.2.1) My Poor TEKK Radio - Dangers of a Baycom Driver
+   5.2.2) Linux Side Configuration
+   5.2.3) JNOS 2.0 Configuration
+   5.2.4) The Latest
+
+  5.3) Network and Routing Considerations for TCP/IP modems
+
+  5.4) Multipsk by Patrick F6CTE
+
+   5.4.1) Running and Configuring Multipsk
+   5.4.2) Multipsk Additions early 2013
+   5.4.3) JNOS 2.0 Configuration
+
+  5.5) WINMOR Sound Card TNC
+
+  5.6) AGW Packet Engine
+
+   5.6.1) Running and Configuring AGWPE
+   5.6.2) JNOS 2.0 Configuration
+
+  5.7) Direwolf
+
+  5.8) SCS WinRPR Robust Packet Software Modem
+
+   5.8.1) Running and Configuring
+   5.8.2) JNOS 2.0 Configuration
+
+  5.9) Fldigi
+
+  5.10) EA5HVK VARA HF and VARA FM Software Modems
+
+   5.10.1) Access Mode - Forwarding (B2F) with Winlink Express station
+ 
+  6) Reference by Remote Call Instead of AX.25 Control Block
+
+  7) IP Routing to Dyn DNS Style Remote Hosts
+
+  8) HF Digital Device (HFDD) Support
+
+  9) SMTP Gateway Options
+
+  10) SMTP Deny Relay Exceptions
+
+   10.1) Command Syntax
+
+ 11) Web Interfaces
+
+   11.1) User BBS
+
+     11.1.1) Starting Web Interface
+     11.1.2) Accessing Web Interface
+     11.1.3) Security Considerations
+
+ 12) Multi Factor Authentication (MFA)
+
+ 13) Some NETROM Enhancements
+
+   13.1) obsoinit, obsominbc, and acktime can now be set by the sysop
+
+   13.2) BBS user can now pass a filter or pattern to the Nodes command
+
+   13.3) Using a filter or pattern with the netrom route JNOS console command
+
+   13.4) Change of syntax to the netrom route JNOS console command
+
+ 14) SID Capture
+
+   14.1) SID Capture to file
+
+ 15) Enhanced TRACE Command
+
+ 16) The RDATE Comand (gone)
+
+ 17) JNOS Log Triggers
+
+ 18) Enhanced AX25 Heard List
+      (save to file, load from file, heard via digipeater)
+
+ 19) The APRS side of JNOS
+
+   19.1) The APRS 'destination' call or 'tocall'
+
+ 20) Enhanced TCP Access Controls
+
+   20.1) Insertion or removal of entries at specific positions in the list
+
+   20.2) Blacklisting of bad telnet logins
+
+   20.2.1) Expiry of Blacklisted items
+
+   20.2.2) An example configuration for your autoexec.nos
+
+ 21) New DATE command
+
+ 22) Customizable help and usage dialogues, minimizing hardcoded help info
+
+ 23) The JNOS log - option to select daily or single running
+
+   23.1) Syntax for LOG command
+
+ 24) Next Item
+
+<< page break >>
+
+ 1) Network Interfaces to Host Operating System
+    -------------------------------------------
+
+   JNOS has always had a way to setup a point-to-point network link between itself
+   and the host operating system on which it runs, allowing it to network with the
+   whatever networks the host operating system has access to.
+
+   It can be as simple as just a linux box without a network connection. OR just
+   a small LAN with terminals for basic telnet access to JNOS for multiple users
+   and local servers for JNOS to interact with. OR ultimately, full blown routing
+   to the internet and vice versa.
+
+   Network connectivity between JNOS and the host operating system is trivial.
+
+   The IP routing to other networks is the part which will challenge you :]
+
+   There is no reason why you can't run multiple point-to-point links between
+   your JNOS system and the host operating system, I've never done it, but if
+   you think about it, it's technically possible - for what I don't know ...
+
+ 1.1) Enable IP Forwarding
+      --------------------
+
+   In order for network traffic to cross this point-to-point link between JNOS
+   and its' host operating system, one has to enable IP forwarding on the host
+   operating system, so for example, on older slackware releases I do this :
+
+    echo 1 > /proc/sys/net/ipv4/ip_forward
+
+   In the case of systemd based linux, you might see people do this instead :
+
+    sysctl -w net.ipv4.ip_forward=1
+
+   and to make it permanent, they add the last part to /etc/sysctl.conf
+
+ 1.2) Original JNOS 1.11f (slip) Method
+      ---------------------------------
+
+   JNOS 1.11f uses a slip interface via pseudo tty devices.
+
+   On the linux side you would run the 'slattach' linux program, which
+   was usually started in the /etc/rc.d/rc.local or similar file :
+
+     #
+     # Initialize the SLIP interface for the JNOS router
+     #
+     /usr/sbin/slattach -s 38400 -p slip /dev/ptyp0 &
+     #
+     sleep 3
+     #
+     /sbin/ifconfig sl0 192.168.1.130
+     /sbin/ifconfig sl0 netmask 255.255.255.224
+     /sbin/ifconfig sl0 pointopoint 192.168.1.131
+     /sbin/ifconfig sl0 mtu 1500
+     /sbin/ifconfig sl0 up
+     #
+
+  And on the JNOS side you would use 'attach tty' command :
+
+     #
+     attach asy ttyp0 - slip sl0 4096 256 38400
+     #
+     ifconfig sl0 ipaddress 192.168.1.131
+     ifconfig sl0 netmask 255.255.255.0
+     ifconfig sl0 mtu 1500
+     #
+
+ 1.3) JNOS 2.0 (tun) Method
+      ---------------------
+
+   JNOS 2.0 uses a tun interface, direct to a kernel device.
+
+   There is no need to run anything on the linux side anymore, however if
+   you decide (wisely) to run JNOS as a non-root user, see further below.
+
+   Traditionally, you would do this as root user, since only a process run as
+   root is able to create the necessary tun kernel device, so typical entries
+   in your autoexec.nos file would be :
+
+     #
+     attach tun tun0 1500 0
+     #
+     ifconfig tun0 ipaddress 192.168.1.131
+     ifconfig tun0 netmask 255.255.255.0
+     ifconfig tun0 mtu 1500
+     #
+     # make sure tun interface is up
+     #
+     pause 1
+     #
+     # the way TUN works, it does not exist before JNOS starts, so we need
+     # to shell out and configure the linux host side for this to work.
+     #
+     shell ifconfig tun0 192.168.1.130 pointopoint 192.168.1.131 mtu 1500 up
+     #
+
+ 1.4) Do NOT run JNOS as root user
+      ----------------------------
+
+   Over the past few years there have been concerns about running any type of
+   program as root user, especially if network interfaces are exposed.
+
+   The solution is quite simple actually. Create the tun interface when linux
+   first boots up or do it manually as the root user or via sudo command :
+
+     ip tuntap add mode tun dev tun4
+
+     ifconfig tun4 192.168.200.200 pointopoint 192.168.200.201 mtu 1500 up
+
+   NOTE : be careful you don't specify an existing tun interface ! If you
+          are running openVPN like I am, then tun0 is already being used,
+          which is the reason I picked tun4, so please check first.
+
+   Once the tun interface exists, then run JNOS as a non-root user :
+
+     #
+     attach tun tun0 1500 0 tun4
+     #
+     ifconfig tun0 ipaddress 192.168.200.201
+     ifconfig tun0 netmask 255.255.255.0
+     ifconfig tun0 mtu 1500
+
+   NOTE : pay close attention to the attach command, notice the extra argument,
+          and also note the JNOS interface (port) name is not related to it.
+
+   The immediate 'benefit' of this method is you no longer need to shell out
+   to configure the linux host side anymore, since it's already done for you.
+
+   NOTE : the ability of JNOS 2.0 to actually work this way only came out the
+          second week of January, 2018, thanks to KB8OJH (Ethan) for a patch.
+            (https://kb8ojh.net/packet/jnos.html)
+
+   Technically you 'could' run this configuration as root user ?
+
+ 2) AX.25 Wormholes
+    ---------------
+
+ An AX.25 wormhole is a point-to-point AX.25 tunnel between two systems, Think of this
+ tunnel as an imaginary radio link between two systems. When internet got cheap, these
+ tunnels started to replace direct radio links between systems. Some folks referred to
+ this as the coming of the Land Line Lids, easier to link systems via internet then to
+ have to spend money and resources on radio equipment, towers, antennas, insurance.
+
+ JNOS 1.11f features AXIP wormholes, check original user manual for 'attach axip'.
+
+ 2.1) New AXUDP Wormhole
+      ------------------
+
+ JNOS 2.0 adds a new AXUDP wormhole, basically the same thing as AXIP, but transmission
+ of AX.25 frames is done over UDP instead of IP. The intent of the UDP based wormholes
+ was such that systems could operate through firewalls that naturally blocked anything
+ non-TCP or non-UDP in nature, such as AXIP or even IPIP, both peer level protocols to
+ TCP and UDP at the IP Protocol level, but protocols many firewall routers blocked.
+
+ 2.2) Command Syntax
+      --------------
+
+ The command syntax is as follows (at the JNOS console or in autoexec.nos file) :
+
+   attach axudp <iface> <mtu> <ipaddress> [<callsign>] [<UDP src port>] [<UDP dest port>]
+
+ the arguments are the same as for 'attach axip', except being this is UDP, you need the
+ ability to specify UDP source and destination ports, which is optional. If they are not
+ specified in the 'attach axudp' command, then both default to UDP port 93.
+
+ IF you need to specify alternative UDP ports, but you don't want a callsign configured,
+ then simply use the '-' character in the space for <callsign>. For example :
+
+   attach axudp gus 256 i0ojj.mooo.com - 10093 10093
+
+ You can also use -1 as the UDP src port, which will allow UDP from any source port, this
+ feature was added in late 2013, and 'allowed' for cases where people had bizzare firewall
+ routers, or used NAT with port mapping. I don't even remember anymore, but if you decide
+ to do this, make sure you have control (firewall) of who is allowed to send you axudp.
+
+ 2.3) Wormholes with Dyn DNS style remote hosts (for AXIP as well)
+      ------------------------------------------------------------
+
+ JNOS 2.0 allows you to replace <ipaddress> with <hostname> instead, for both 'attach axip'
+ and 'attach axudp' commands. This tells JNOS 2.0 to periodically resolve any hostnames to
+ ensure a current IP address for the system at the other end of the wormhole.
+
+ This is a powerful feature to maximize connectivity with remote systems having frequent
+ changes to their IP address. Typically the remote side will arrange to setup some type
+ of dyndns (dynamic DNS) hostname, which you would then use in your 'attach' command.
+
+ 2.4) Maximum AXIP and AXUDP Interfaces
+      ---------------------------------
+
+ JNOS 2.0 allows you to specify the maximum number of combined axip and axudp interfaces
+ at runtime - no longer hardcoded, with a default value set to 16 (NAX25). It's combined
+ because the axip and axudp interfaces share common code and command structures.
+
+ The command syntax is as follows (from the linux command prompt) :
+
+   jnos -a 24
+
+<< page break >>
+
+ 3) Message Forwarding and BBS operations
+
+ 3.1) Forwarding With Winlink
+      -----------------------
+
+ JNOS 2.0 is able to forward with Winlink CMS Servers, and as of JNOS 2.0m.2, you can
+ actually download messages for multiple winlink accounts (calls), not just your own,
+ with each call getting their messages delivered to their own JNOS bbs user area.
+
+ At the same time, JNOS 2.0 bbs users can compose messages to Winlink accounts, with
+ the delivery of messages done on the 'next forwarding' with the Winlink CMS server.
+
+ Message forwarding is done using the B2F protocol over a telnet session.
+  (just to be clear, this is NOT smtp, messages are not exchanged by email)
+
+ Reference : Open B2F -- Winlink Message Structure and B2 Forwarding Protocol 
+  (visit the URL 'https://winlink.org/B2F' for the complete specification)
+
+ 3.1.1) Configuring /jnos/spool/forward.bbs
+        -----------------------------------
+
+ Add the following section to your forward.bbs configuration file :
+
+    -------
+    wl2k
+    telnet cms.winlink.org 8772 cronly
+    +Callsign :
+    *10
+    .URCALL
+    +Password :
+    @10
+    .CMSTelnet
+    wl2k
+    -------
+
+ Make sure to replace URCALL with your own Winlink Account callsign.
+  (so for my system the entry would be .VE4KLM, note there is NO ssid)
+
+ 3.1.2) Configuring JNOS winlink callsign or callsigns
+        ----------------------------------------------
+
+ Use the 'mbox winlinkcalls' command to configure your own Winlink call, as well
+ as any other Winlink calls for which you want JNOS to download messages for.
+
+ The command syntax is as follows (at the JNOS console or in autoexec.nos file) :
+
+   mbox winlinkcalls [primary] [secondary 1] [secondary 2] ... [secondary N]
+     
+ The primary call is mandatory, that's your own Winlink account.
+
+ The secondary calls are optional of course. You would only specify them if you
+ want to be able to download messages for those winlink accounts.
+
+ 3.1.3) Creating JNOS winlink account or accounts
+        -----------------------------------------
+
+ You must create a JNOS 2.0 winlink user account for each call configured.
+
+ The command syntax is as follows (from the linux command prompt) :
+
+   jnospwmgr -a [callsign] -w
+
+ You will be asked to enter a password, for the specified Winlink Account callsign.
+
+ 3.1.4) Initiate Forwarding With Winlink
+        --------------------------------
+
+ Simply run the following command at the JNOS console :
+
+   mbox kick Wl2k
+
+ Note the 'capitalized' W which tells JNOS 2.0 to connect regardless of whether
+ there is anything to send to Winlnk or not. Had I just specified 'wl2k', all in
+ lowercase, nothing will happen, unless there are messages that were composed to
+ Winlink users that are waiting to be delivered.
+
+ This is how JNOS forwarding behaves, now you know.
+
+ After issuing a kick, one should see activity in the JNOS log, for example :
+
+   04:12:02  CONSOLE - mbox ki Wl2k
+   04:12:02  52.1.178.80:8772 (2703) - MBOX (wl2k) connected
+   04:12:03  - hostname [winlink-lb-628697408.us-east-1.elb.amazonaws.com]
+   04:12:03  52.1.178.80:8772 (2703) - [VE4KLM] requesting secure login [66885467] PQchallenge
+   04:12:03  52.1.178.80:8772 (2703) - [62864142] challenge response
+   04:12:03  52.1.178.80:8772 (2703) - [VE4PKT] requesting secure login [66885467] PQchallenge
+   04:12:03  52.1.178.80:8772 (2703) - [26249855] challenge response
+   04:12:03  52.1.178.80:8772 (2703) - additional [ VE4PKT|26249855]
+   04:12:03  52.1.178.80:8772 (2703) - MBOX (wl2k) forwarding
+   04:12:03  52.1.178.80:8772 (2703) - MBOX (wl2k) proposal FC EM 63258_VE4KLM 214 193 0
+   04:12:03  52.1.178.80:8772 (2703) - MBOX (wl2k) got response FS Y
+   04:12:03  52.1.178.80:8772 (2703) - MBOX (wl2k) lzhuf compress 187/214 = 12 percent
+   04:12:04  52.1.178.80:8772 (2703) - MBOX (wl2k) $63258_VE4KLM sent
+   04:12:04  - only if we get FF send FQ
+   04:12:04  52.1.178.80:8772 (2703) - MBOX (wl2k) fwd exit
+
+ In the above example, I have my main Winlink callsign and VE4PKT as a secondary call for
+ which I want to download messages for. As well, you can see I am forwarding a message to
+ the VE4PKT Winlink account in this particular forwarding session.
+
+ In another example, I first emailed test messages to both VE4KLM and VE4PKT at Winlink,
+ using regular internet email from my personal email account :
+
+      From : maiko@pcsinternet.ca
+        To : ve4klm@winlink.org, ve4pkt@winlink.org,
+   Subject : //WL2K another test on 22June2020 (monday)
+
+ then after issuing a kick, my JNOS 2.0 log showed the following activity and you can see
+ the messages coming in over the forwarding session, then being delivered to user areas :
+
+   18:10:02  CONSOLE - mbox ki Wl2k
+   18:10:02  52.1.178.80:8772 (1275) - MBOX (wl2k) connected
+   18:10:03  - hostname [winlink-lb-628697408.us-east-1.elb.amazonaws.com]
+   18:10:03  52.1.178.80:8772 (1275) - [VE4KLM] requesting secure login [23679817] PQchallenge
+   18:10:03  52.1.178.80:8772 (1275) - [09638302] challenge response
+   18:10:03  52.1.178.80:8772 (1275) - [VE4PKT] requesting secure login [23679817] PQchallenge
+   18:10:03  52.1.178.80:8772 (1275) - [11287149] challenge response
+   18:10:03  52.1.178.80:8772 (1275) - additional [ VE4PKT|11287149]
+   18:10:03  52.1.178.80:8772 (1275) - MBOX (wl2k) forwarding
+   18:10:03  52.1.178.80:8772 (1275) - [;PM: VE4KLM 1JBDNL4D2UH0 209 maiko@pcsinternet.ca //WL2K another test on 22June2020 (monday)]
+   18:10:03  52.1.178.80:8772 (1275) - [;PM: VE4PKT 99E7GODM6G7D 210 maiko@pcsinternet.ca //WL2K another test on 22June2020 (monday)]
+   18:10:03  52.1.178.80:8772 (1275) - MBOX (wl2k) incoming proposal FC EM 1JBDNL4D2UH0 247 209 0
+   18:10:03  52.1.178.80:8772 (1275) - MBOX (wl2k) incoming proposal FC EM 99E7GODM6G7D 247 210 0
+   18:10:04  52.1.178.80:8772 (1275) - MBOX (wl2k) our response FS ++
+   18:10:04  52.1.178.80:8772 (1275) - MBOX (wl2k) lzhuf uncompress 209/247 = 15 percent
+   18:10:04  52.1.178.80:8772 (1275) - MBOX (wl2k) 1JBDNL4D2UH0 received
+   18:10:04  52.1.178.80:8772 (1275) - MBOX (wl2k) lzhuf uncompress 210/247 = 14 percent
+   18:10:04  52.1.178.80:8772 (1275) - MBOX (wl2k) 99E7GODM6G7D received
+   18:10:04  52.1.178.80:8772 (1275) - MBOX (wl2k) fwd exit
+   18:10:04  44.135.124.1:1277 - open SMTP
+   18:10:04  44.135.124.1:1278 - open SMTP
+   18:10:04  44.135.124.1:smtp (1277) - SMTP sent job 261376 To: ve4pkt@winnipeg.ampr.org From: smtp:maiko@pcsinternet.ca%wl2k@winnipeg.ampr.org
+   18:10:04  44.135.124.1:1277 - close SMTP
+   18:10:04  44.135.124.1:smtp (1278) - SMTP sent job 261375 To: ve4klm@winnipeg.ampr.org From: smtp:maiko@pcsinternet.ca%wl2k@winnipeg.ampr.org
+   18:10:04  44.135.124.1:1278 - close SMTP
+
+ 3.1.5) Receiving Attachments from Winlink Users
+        ----------------------------------------
+
+ Believe it or not, JNOS will save attachements contained in any messages received when
+ forwarding with Winlink. The B2F protocol allows for that. So you can have folks from
+ the internet side send attachments to Winlink users, and those attachments can then be
+ recovered right to your JNOS 2.0 system.
+
+ It was something quickly developed quite some time ago, probably could be made a lot
+ more user friendly. For instance, you don't have a choice where the files get saved,
+ but if you're the sysop, that doesn't really matter. But still, needs to be better.
+
+ BUT ... the feature appears 'broken' recently, not sure why, looking into it :(
+
+ 3.1.6) Composing Messages to Winlink Users
+        -----------------------------------
+
+ From the JNOS BBS prompt, one simply uses the usual SP command, for example :
+
+   Area: ve4klm (#1) >
+   sp ve4pkt@wl2k
+   To: wl2k
+   Subject:
+   //WL2K test messages
+   Enter message.  End with /EX or ^Z in first column (^A aborts):
+   testing testing
+   calling all cars 
+   Maiko
+   /ex
+
+ BUT there are two things here you need to pay attention to :
+
+  the '@wl2k' is very important. That tells JNOS 2.0 to put the
+  message for that particular callsign into the wl2k forwarding
+  area we setup earlier in the /jnos/spool/forward.bbs file.
+
+  when composing messages to Winlink, your Subject must start
+  with the phrase '//WL2K' although I am not a hundred percent
+  sure that is mandatory within the context of B2F transfer.
+   (it is a requirement with any internet email)
+
+ This message and any other composed messages are held in the wl2k
+ forwarding area until such time JNOS 2.0 is given the 'mbox kick'
+ command, at which point they will be sent to the Winlink system.
+
+ 3.1.7) Automated (Scheduled) Forwarding
+        --------------------------------
+
+ You can tell JNOS 2.0 to automatically run the 'mbox ki Wl2k' at regular
+ intervals use the 'AT' command at the JNOS console, or in the autoexec.nos
+ file, for example :
+
+   at 30 "mbox ki Wl2k+"
+
+ which tells JNOS 2.0 to do this at the 1/2 hour mark for each hour.
+
+ Search the original user manual for 'at time' for syntax and options.
+
+<< page break >>
+
+ 3.2) Proper Configuration of forward.bbs file
+      ----------------------------------------
+
+ Very recently, I spent some time trying to figure out how all of the commands
+ in forward.bbs actually work and what they do. Monitoring the actual exchange
+ of data in realtime using either the JNOS 'trace' command or 'tcpdump' on the
+ linux side can be very helpful in refining your connect sequence in the file.
+
+ The configuration presented further below actually waits for prompts to appear
+ before sending anything, and I believe it is the way you should do forwarding
+ on your JNOS 2.0 system. Before this, I would see configurations where if you
+ were to look at a trace of the actual traffic between systems, you would see
+ the login and password sent before any prompts even showed up, worse, they'd
+ be sent in a single packet. They were basically brute forcing their way in.
+
+ So below is a heavily documented version of the forward.bbs section outlined
+ in Section 12.2.1, how to telnet forward TO an MFA enabled JNOS 2.0 system.
+
+ This would apply to ax25 or netrom connections as well of course.
+
+     #
+     # Make sure to separate forward.bbs entries with '----'
+     #
+     -------
+     #
+     # ve4klm is the remote system that I want to forward with.
+     #
+     ve4klm
+     #
+     # I can manually initiate a forward from the JNOS console :
+     #
+     #   jnos > mbox ki Ve4klm
+     #
+     # Or I can use the JNOS 'at' command to schedule this :
+     #
+     #   at 30 "mbox ki Ve4klm+"
+     #
+     # In both cases above, note the first letter of the remote callsign is
+     # in capitals, which simply means we will connect to the remote system
+     # even if we have no messages to send, and initiate a reverse forward,
+     # in the event they have something for us instead.
+     #
+     # You can leave the first letter of the call as lowercase of course, but
+     # if you have nothing to send, and are waiting for something to come in,
+     # you will never see it, unless the remote systems initiates a forward.
+     #
+     # I am using telnet to get to this particular remote system
+     #
+     telnet 192.168.200.201
+     #
+     # Set the prompt to wait for, don't send anything yet.
+     #
+     +login:
+     #
+     # Now we need to use '*' operator, since there are several lines
+     # that show up before the login prompt does, each of those lines
+     # will have a carriage return, so using '*' reads them all in.
+     #
+     # When we get to the login prompt, there is NO carriage return,
+     # so we now have to depend on the timeout feature to get to the
+     # next step in this file. From a technical point of view, JNOS
+     # uses mbxrecvline() to read in data, so if it isn't terminated
+     # with a carriage return it sits there till a timeout occurs.
+     #
+     # Many of these prompts are not followed by a carriage return,
+     # so we have no choice but to depend on the timeout feature of
+     # the forward.bbs command set to get to the next step.
+     #
+     # Wait for 1 second, you can bump it up for slow networks.
+     #
+     *1
+     #
+     # At this point, the login prompt has appeared, send my callsign.
+     #  (note anything sent has to start with a period '.')
+     #
+     .ve4klm
+     #
+     # Again we set a prompt to wait for, don't send anything yet. This
+     # time we are looking for the password prompt, same as above.
+     #
+     +Password:
+     #
+     # In this case we need to use the '@' operator, there's only 1 line.
+     #
+     # Wait for 1 second, you can bump it up for slow networks.
+     #
+     @1
+     #
+     # At this point, the password prompt has appeared, send your password.
+     #  (again, note anything sent has to start with a period '.')
+     #
+     .MYPASSWORD
+     #
+     # Again we set a prompt to wait for, don't send anything yet. This
+     # time we're looking for the 'multi factor authentication' prompt.
+     #
+     +Auth:
+     #
+     # Again we need to use '*' operator, since there is a carriage
+     # return that needs to be read in before we get to the prompt.
+     #
+     # Wait for 1 second, you can bump it up for slow networks.
+     #
+     *1
+     #
+     # At this point, the Auth prompt has appeared, send your code.
+     #  (again, note anything sent has to start with a period '.')
+     #
+     .A32D#2F
+     #
+     # At this point, the script is basically done, JNOS starts the
+     # actual forwarding process for only those areas defined below.
+     #
+     mb
+     ww
+     #
+     # Make sure to separate forward.bbs entries with '----'
+     #
+     -------
+
+ 3.2.1) Monitoring forward.bbs connection sequence
+        ------------------------------------------
+
+ You can have JNOS print out debugging information to the main console, as well
+ as provide additional logging to the main JNOS log file, by turning on mailbox
+ trace feature. Use the following command at the console :
+
+     mbox trace on
+
+ When you are done, switch it off using this command below :
+
+     mbox trace off
+
+ Of course, you could always enable a trace on the interface in use for your
+ forwarding session. In the case of telnet forwarding, you'll likely need to
+ run the trace on your tun0 or encap interface.
+
+ Check section 15 for the JNOS 'trace' command. There was an enhancement made
+ to the original command, so you will notice an extra 'sync' parameter.
+
+ Or you can do it on the linux side as well, using tools like 'tcpdump'.
+
+ In any event, now you have a few hopefully useful tools to help you nail down
+ the proper sequence of commands in your forward.bbs file.
+
+ 3.2.2) Non Forwarding command scripts to remote systems
+        ------------------------------------------------
+
+ JNOS has the ability to run a script of commands on a remote bbs system, and
+ log the results to file. This feature uses the forward.bbs mechanism - so any
+ section defined in 'spool/forward.bbs' which ends with '_script' is treated as
+ a remote command and log sequence (there is NO forwarding done for these).
+
+ As an example, I would like to collect NETROM routing information from two of
+ my forwarding partners, one runs JNOS, the other BPQ. A BBS user in JNOS will
+ use the 'NR' command, but in BPQ they would use the 'RO' command instead.
+
+ So I have the following 2 script entries defined in my forward.bbs file :
+
+     -------
+     n2nov_script
+     ax25 newyork n2nov-4
+     .nr
+     +>
+     *5
+     -------
+     k5dat_script
+     net k5dat-7
+     .ro
+     +>
+     *10
+     -------
+
+   This is just like any forwarding sequence, where I can just do a :
+
+     mbox ki N2nov_script
+
+   and/or
+
+     mbox ki K5dat_script
+
+   Note the capitalized first letter of section, since there will never be
+   any mail to deliver with these scripts, or you could always add a poll
+   option to the section line and not worry about the capitalization.
+
+   Also note the lack of any message areas in the script definitions, it's
+   all pure commands, and waiting for results. Hopefully people find it to
+   be somewhat useful, we can certaintly build on it, feedback is welcome.
+
+   The output file generated for eaction section is 'section'.dat, ie :
+
+     n2nov_script.dat, k5data_script.dat
+
+ 3.3) Message BIDs now BASE36
+      -----------------------
+
+ As of 2.0m.5B - the BID for messages from 'our host' is now in BASE36 format.
+
+ This gives us a much bigger range of several million numbers, instead of the
+ original range of only 100 thousand BASE10 numbers, and then over again.
+
+ If you use an email client (like thunderbird) to send messages to your JNOS
+ system, you'll notice this version no longer uses a portion of the message-id
+ present in the email header to generate the BID, rather it will just create
+ another BASE36 BID from JNOS sequence number pool.
+
+ I figure it is perfectly fine to do this now, since BASE36 extends the range
+ of the BID to several million. The original message-id is still preserved in
+ the message header anyways, so nothing is lost here.
+
+ 3.4) Control of Duplicate Messages
+      -----------------------------
+
+ As of 2.0m.5B - there is advanced DUPE protection for concurrent forwarding
+ sessions with multiple remote hosts, where messages having the same BID are
+ coming in from multiple sources at the same time, or even within seconds or
+ minutes of each other.
+
+ It should be noted that JNOS has always been vunerable to this, resulting in
+ posting of duplicate messages, which in turn get forwarded to other systems,
+ which is just not good.
+
+ The solution up till now has been to stagger forwards with remote partners,
+ such that only one partner is forwarding at any particular time. With this
+ new feature, we can loosen things up considerably, and not worry about it.
+
+ The 'excess' messages are deferred (not refused). We have to defer incase
+ something breaks during processing of the 'accepted' message at the time.
+
+ 3.5) Security of Forwarding Partners
+      -------------------------------
+
+ As of 2.0m.5C - stations you have arranged to have incoming forwarding with,
+ will need to have BBS permissions set for the respective users configured in
+ your ftpusers file.
+
+ This should protect against rogue or ignorant incoming connects from stations
+ who could then proceed to send a SID, possibly followed by illegal 3rd party
+ forwarding or forwarding of malicious messages.
+
+ For BBS permissions OR 0x02000 - so 0x0407f in ftpusers becomes 0x0607f
+
+ Up till now, this has always been allowed, but now JNOS will send a terse
+ message to the 'offending' station first, instead of the SID, disrupting the
+ message flow - it might require some refinement, let me know please.
+
+ These events are also logged to the JNOS logfile as :
+
+    "SID from non BBS user, discouraged"
+
+ 3.6) Rewrite File - can now target specific FROM users (stations)
+      ------------------------------------------------------------
+
+ Entries in the rewrite file are now capable of targeting (such a bad word)
+ specific users / stations. In other words one can now add entries that apply
+ to only a FROM <pattern>, for example :
+
+       *@ww:ve4klm  hold
+       *@ww ww
+
+ This allows ALL incoming @ww to the ww area, but any @ww coming from me is
+ actually sent to the hold area instead. Or you could just refuse any @ww
+ coming from me, for example :
+
+       *@ww:ve4klm  refuse
+       *@ww ww
+
+ In the case of refuse, it is rejected right when the proposal appears.
+
+ What is new is the addition of the ':' tag, followed by a PATTERN to match in
+ the FROM field of the incoming message (no spaces). Yes, it is a pattern, not
+ a direct callsign match, sort of a wildcard ...
+
+ 3.7) Lack of Support for Partial (Restart Data) Forwarding
+      -----------------------------------------------------
+
+ JNOS still does not support the '!' or 'A' FSR character in any FS string it
+ might receive from a remote BBS during a forward session. I have tried to get
+ it working over the years, but my attempts to do so have been half hazardly
+ tried, and in the end it remains a thorn in my side. I need to fix it, yes.
+
+ It has been observed you can significaly reduce the chances of 'Restart Data'
+ condition happening with BPQ or a 'continue forwarding partial file' in the
+ FBB software, by adjusting the FBB max message blocksize on the remote end.
+
+ I've thought of adding an FBB max message blocksize parameter to forward.bbs
+ entries as one way to to deal with reducing the chances of this happening.
+
+ 3.8) Handling B2F from non-Winlink systems
+      -------------------------------------
+
+ It has been observed that some recent BPQ systems are presenting B2F in the
+ SID, which can cause problems, since I wrote the B2F code mostly for Winlink
+ CMS interactions.
+
+ What I have done in the meantime is modified the code to downgrade any B2F
+ connections from non-Winlink systems to use B1F instead, until such time I
+ am able to get it properly working and properly tested.
+
+ 3.9) Special EOL handling, specific to linfbb forwarding issue
+      ---------------------------------------------------------
+
+ Some time in 2016, we ran into a bizarre forwarding issue, where inconsistent
+ end of line (EOL) sequences were encountered while forwarding with linfbb.
+
+ JNOS would expect 0x0d 0x0a, but at some point linfbb would start sending just
+ the 0x0d (no 0x0a at all). If one had 'mbox tdisc' configured, JNOS would hang
+ for that time, waiting for the 0x0a it would never receive, and then it would
+ instead get a first byte of data from the next proposal or an FBB command. It
+ effective broke the forward session. If you didn't configure 'mbox tdisc' at
+ all, JNOS would likely hang 'forever' depending where it was in the forward
+ session. I had talked with Bernard about it, and he was aware of the issue.
+
+ So in the meantime, it was dealt with on the JNOS side, quite technical :|
+  (you can read about it in the code and in the release history)
+
+ Anytime this situation arose, JNOS would write EOL warnings to the JNOS log.
+
+ You can suppress the EOL warnings using this JNOS console command :
+
+     mbox eolwarnings off
+
+ By default, they are enabled - at some point they'll annoy you (maybe).
+
+ 3.10) Telnet compressed forwarding issues, IAC character, past decade plus
+       --------------------------------------------------------------------
+
+ In simple terms, for any telnet session, there is one particular character
+ value you have to watch out for. The value 255 (0xff) is also known as the
+ IAC (interpret as command) byte. It's an escape character which allows for
+ the embedding of telnet commands into the session itself. This is detailed
+ in RFC 854 (telnet protocol specification), see the webpage link below :
+
+    https://tools.ietf.org/html/rfc854
+
+ JNOS has 'support' for IAC in parts of the code, but not in the code that
+ does the actual FBB compression (the yapp functions). So what happens is
+ that if you have a telnet session with a system that is using IAC as per
+ the RFC in the compression routines, JNOS does not care. It does not see
+ the IAC as an escape character, it just sees it (and command bytes that
+ follow) as just plain old data. The end result is that things 'break'.
+
+ For years, I thought trying to intrepret IAC in these functions would most
+ certainly corrupt any compressed data, honestly thinking it was transparent,
+ with no imbedded byte sequences and such - well, live and learn eh ?
+
+ It was determined that LINFBB and OBCM both interpret the IAC byte as per the
+ RFC for the compressed part, where as JNOS, BPQ, and Winlink (CMS) did not !
+
+ JNOS versions 2.0k and above now incorporate a new software flag, deep inside
+ the socket layer code to flag whether JNOS should process the IAC byte or just
+ treat it as data. The default behavior has always been to treat it as data. I
+ wanted to preserve this to ensure backwards compabitity with all of the older
+ versions of JNOS. You can read more about this in the release history.
+
+ 3.10.1) START TELNET - syntax change, new options
+         -----------------------------------------
+
+ As of version 2.0k, note the following syntax changes :
+
+    autoexec.nos or JNOS console :
+
+       start telnet [port] [options]
+
+    forward.bbs file :
+
+       telnet host [port] [options]
+
+ In both of the above case, possible options are (single or combined) :
+
+    cronly        telnet listener expects just 0x0d for EOL
+    iac           enforce IAC during FBB compression
+    noiac         treat IAC as regular data during FBB compression
+  
+ where the 'noiac' option is there for those who choose NOT to preserve the
+ original behavior of JNOS regarding IAC when they compile their code.
+
+ IF you are passing options, then you MUST specify a port, so even for the
+ default telnet port 23, you will have to specify the 23.
+
+ You can run multiple 'start telnet' commands, different ports and options
+
+ I have put together the following file with forwarding config examples :
+
+   http://www.langelaar.net/jnos2/documents/examples_2.0k.txt
+
+ Thanks to Bob (VE3TOK) and Gus (I0OJJ) for providing much of this !
+
+<< page break >>
+
+ 4) SNMP Server (needs updating)
+    -----------
+
+ The only reason I added an SNMP service to JNOS was because I wanted to use
+ the MRTG (and later, RRD) tools to monitor traffic on my JNOS interfaces.
+
+ The first version of the server was (still is) quite limited, but serves my
+ graphing needs for now.
+
+ One can surely add to it if they want other types of information.
+
+ The JNOS 2.0 SNMP server will only respond to SNMPv1, GetRequest PDU types.
+
+ 4.1) IF-MIB listing
+      --------------
+
+ Initial version only supported the following MIB entries (Interface Indexes) :
+
+   ifInOctets       1.3.6.1.2.1.2.2.1.10   .N
+   ifOutOctets      1.3.6.1.2.1.2.2.1.16   .N
+   sysUpTime        1.3.6.1.2.1.1.3
+   sysName          1.3.6.1.2.1.1.5
+
+   NOTE : these are packet counts - NOT byte counts :|
+
+ Subsequent versions allowed me to specify Interface Names in my MRTG configs,
+ since I got tired of having to constantly edit MRTG configuration files each
+ time I changed my JNOS port configuration. No matter how 'carefull' I was in
+ making change, it always resulted in remapping of Interface Index values :
+
+   ifName           6.1.2.1.31.1.1.1.1     .N
+   ifName.Counter   6.1.2.1.31.1.1.1.2.1
+   ifDesc           6.1.2.1.2.2.1.2        .N
+   ifDesc.Counter   6.1.2.1.2.2.1.1.3.1
+   ifType.Counter   6.1.2.1.2.2.1.1.4.1
+
+ Anything else is ignored (for now).
+
+ 4.2) Configuration and Security
+      --------------------------
+
+ Security is through use of community name and ip address pattern combinations
+ kept in an Access Control List (ACL). You can have as many entries as desired.
+
+ The command syntax is as follows - at JNOS console or in autoexec.nos file :
+
+   snmp ro [community name] [ip address pattern]
+
+ The [ip address pattern] is optional, which opens it up to anywhere !
+
+ To list the current ACL, simply run following command at the JNOS console :
+
+   snmp ro
+
+ You should probably setup a firewall strategy in general to protect your SNMP
+ service.
+
+ For example, suppose I want to allow SNMP access from only my private LAN at
+ home, with all SNMP clients required to use the community name 'K0czhZ0cm',
+ the command would be :
+
+   snmp ro K0czhZ0cm 192.168.200
+
+ I could just say that I want all of the ampr.org to access my SNMP server :
+
+   snmp ro amprnet 44
+
+ Oh yes - a postnote : I guess we don't 'own' the entire 44 anymore ...
+
+ 4.3) Finding Interface Index for specific JNOS interface
+      ---------------------------------------------------
+
+ Simply run the following command at the JNOS console :
+
+   snmp ifaces
+
+ which lists the 'index to port' mappings, for example :
+
+  jnos> snmp ifaces
+  iface #  name
+         0 paul
+         1 home
+         2 ve7
+         3 uro
+         4 netrom
+         5 lav
+         6 bob
+         7 gus
+         8 hull
+         9 que
+        10 cal
+        11 tun0
+        12 loopback
+        13 encap
+
+ 4.4) Batch Query with SNMP Client
+      ----------------------------
+
+   You can walk the JNOS 2.0 SNMP server, using linux command line :
+
+     root@slackware:~# snmpwalk -v1 -c K0czhZ0cm 192.168.200.201 ifName
+
+     IF-MIB::ifName.1 = STRING: paul
+     IF-MIB::ifName.2 = STRING: home
+     IF-MIB::ifName.3 = STRING: ve7
+     IF-MIB::ifName.4 = STRING: uro
+     IF-MIB::ifName.5 = STRING: netrom
+     IF-MIB::ifName.6 = STRING: lav
+     IF-MIB::ifName.7 = STRING: bob
+     IF-MIB::ifName.8 = STRING: gus
+     IF-MIB::ifName.9 = STRING: hull
+     IF-MIB::ifName.10 = STRING: que
+     IF-MIB::ifName.11 = STRING: cal
+     IF-MIB::ifName.12 = STRING: tun0
+     IF-MIB::ifName.13 = STRING: loopback
+     IF-MIB::ifName.14 = STRING: encap
+
+   BUT, you can actually specify a specific port as well :
+
+     root@slackware:~# snmpwalk -v1 -c K0czhZ0cm 192.168.200.201 ifName.7
+     IF-MIB::ifName.7 = STRING: bob
+
+   You can replace 'ifName' in the above examples with 'ifInOctets', 'ifOutOctets', and 'ifDesc'.
+
+   Passing the numeric representation of a particular MIB works as well :
+
+     snmpwalk -v1 -c K0czhZ0cm 192.168.200.201 1.3.6.1.2.1.2.2.1.16
+
+     IF-MIB::ifOutOctets.1 = Counter32: 215249
+     IF-MIB::ifOutOctets.2 = Counter32: 0
+     IF-MIB::ifOutOctets.3 = Counter32: 15571
+     IF-MIB::ifOutOctets.4 = Counter32: 59918
+     IF-MIB::ifOutOctets.5 = Counter32: 350624
+     IF-MIB::ifOutOctets.6 = Counter32: 96515
+     IF-MIB::ifOutOctets.7 = Counter32: 2761769
+     IF-MIB::ifOutOctets.8 = Counter32: 18538
+     IF-MIB::ifOutOctets.9 = Counter32: 15571
+     IF-MIB::ifOutOctets.10 = Counter32: 138206
+     IF-MIB::ifOutOctets.11 = Counter32: 194751
+     IF-MIB::ifOutOctets.12 = Counter32: 47893455
+     IF-MIB::ifOutOctets.13 = Counter32: 0
+     IF-MIB::ifOutOctets.14 = Counter32: 11928766
+
+   NOTE : there is a trailing error using numeric, still trying to figure it out, sorry :(
+
+     IF-MIB::ifMtu.1 = INTEGER: 16436
+     Error: OID not increasing: IF-MIB::ifOutOctets.14
+      >= IF-MIB::ifMtu.1
+
+ 4.5) Selective Query with SNMP Client
+      --------------------------------
+
+   You can pick off a specific item from the JNOS 2.0 SNMP server, using linux command line :
+
+     root@slackware:~# snmpget -v1 -c K0czhZ0cm 192.168.200.201 1.3.6.1.2.1.2.2.1.16.11
+     IF-MIB::ifOutOctets.11 = Counter32: 192009
+ 
+     This grabs the outgoing count for interface index 11, which is my JNOS tun0 interface.
+
+   You can pass the string representation of a particular MIB as well, for example :
+
+     root@slackware:~# snmpget -v1 -c K0czhZ0cm 192.168.200.201 ifInOctets.13
+     IF-MIB::ifInOctets.13 = Counter32: 6161142
+
+     This grabs the incoming count for interface index 13, which is my JNOS encap interface.
+
+ 5) Software Modems
+    ---------------
+
+   Using a soundcard or modulator board (baycom) in place of a full blown hardware based
+   modem or TNC, has been around for many years now. There are some really good programs
+   and systems out there, allowing you to explore tons of different digital modes.
+
+   For AX.25 (packet) modes, JNOS 2.0 can interface with the following systems :
+
+    Soundmodem
+    Baycom Board
+    Multipsk
+    AGWPE
+    Direwolf (using AGWPE emulation)
+
+   There is a WINMOR interface as well (very experimental) - not for AX.25 though.
+
+ 5.1) Soundmodem by Thomas Sailer
+      ---------------------------
+
+   At the end of Jun, 2005, I posted a note to the TAPR xNOS Mailing List, after
+   having discovered the very interesting 'soundmodem' by Thomas Sailer, which I
+   decided to try out as an experiment. It took me less then 5 minutes to get it
+   working and I was instantly impressed.
+
+ 5.1.1) The 2005 Experiment
+        -------------------
+
+   The original website I got the driver from was this one :
+
+     http://www.baycom.org/~tom/ham/soundmodem
+
+   POST NOTE : it is now 'blank' :(
+
+   Back then I installed it on my Fedora 3 box at work using :
+
+     rpm -ivh soundmodem-0.9-1.i386.rpm
+
+   and configured it (basic afsk modulator, KISS packet i/o mode) :
+
+     soundmodemconfig
+
+   and lastly, started the soundmodem drive :
+
+     service soundmodem start
+
+   then in my autoexec.nos, add something like the following :
+
+     attach asy soundmodem0 - ax25 vhf 4096 256 1200
+     ifconfig vhf description "sndcard"
+
+   Then ran JNOS, and tried a connect from the JNOS console :
+
+     c vhf ve4rag
+
+   and it worked, instant packet out the soundcard !
+
+   NOTE : I had to build a PTT interface (no big deal), and there
+          was some experimenting with configuration and settings.
+
+ 5.1.2) Still Works in 2012
+        -------------------
+
+   At the end of February, 2012, I was playing with soundmodem version 0.16,
+   and noted there were some differences from versions before that.
+
+   For example, you now needed a new '/etc/ax25' directory, containing an XML
+   configuration file ''etc/ax25/soundmodem.conf'. Because I used slackware,
+   I would just run the program as 'soundmodem &', instead of the service.
+
+   The soundmodem.conf file is generated by 'soundmodemconfig', but if you
+   were like me back then, and didn't have graphic libraries installed, it
+   meant you couldn't run the configuration utility, so here's the file :
+
+<?xml version="1.0"?>
+<modem>
+  <configuration name="tmp">
+    <channel name="Channel 0">
+      <mod mode="afsk" bps="1200" f0="1200" f1="2200" diffenc="1"/>
+      <demod mode="afsk" bps="1200" f0="1200" f1="2200" diffdec="1"/>
+      <pkt mode="KISS" ifname="sm0" hwaddr="" ip="10.0.0.1" netmask="255.255.255.0" broadcast="10.0.0.255" file="/dev/soundmodem0" unlink="1"/>
+    </channel>
+    <chaccess txdelay="150" slottime="100" ppersist="40" fulldup="0" txtail="10"/>
+    <audio type="soundcard" device="/dev/dsp" halfdup="0"/>
+    <ptt file="none"/>
+  </configuration>
+</modem>
+
+   I'm sure you will have to tweak the values for your own system needs.
+
+ 5.1.3) Still Works in 2015
+        ------------------
+
+   In April of 2015, my JNOS was moved to Scientific Linux 7.1 - running on an
+   older Dell Optiplex 330, reluctantly ditching all my TNCs because they were
+   aging and unreliable. For some time after, I ran a single soundmodem port,
+   with a homebrew interface direct to a reconditioned Icom IC28H, and it was
+   rock solid (for me anyways).
+
+ 5.1.4) The Latest
+        ----------
+
+   I have not tried this since 2015, however, I am sure this will still work, if
+   you consider the fact Scientific Linux 7 and similar are still in use today.
+
+ 5.2) Baycom Board
+      ------------
+
+   Sometime at the start of the 21rst century, I received an XR based Baycom
+   Board from ZL1AVY (Doug Tennent) in my mailbox - just the board. I do not
+   remember if it came with parts, I think I had to source them myself.
+
+   I have to acknowledge Doug for this, since it opened up many possibilities
+   for me, including extensive use as my main packet radio port in my original
+   DOS based Flexnet and Baybox configurations. This board never disappointed,
+   and worked very well for my needs. In fact, I still have the same board in
+   my radio room - sitting on a shelf, waiting for the droves of packet radio
+   users to return to the air waves :]
+
+   In December of 2008, I wrote a 'direct to kernel module' interface for the
+   classic BAYCOM Board, eliminating the need to have an in-between 'net2kiss'
+   program and pseudo-tty device. All I did was use the kernel side code from
+   the 'net2kiss' source and put it directly into the JNOS source.
+
+   NOTE : that code is Copyright (C) 1996 by Thomas Sailer - he wrote it !
+
+   Before this, JNOS would have to 'attach asy' to the pseudo-tty device used
+   with the 'net2kiss' program, but with the new interface code it's now just
+   a simple matter of using 'attach baycom' instead.
+
+   NOTE : in fact you could use the new interface code for ANY situation where
+          you wanted to replace the use of 'net2kiss' - not just for baycom.
+
+   This would have been done on my slackware 9.1 system, 2.4.22 kernel, which
+   came with the baycom_ser_fdx module already. Of course you will need kernel
+   headers and development. If you are wanting to try this on another system,
+   results may vary. If you feel like you need a challenge, then go for it.
+
+   I was using the 'baycom_ser_fdx' module (device name bcsf0) at the time.
+
+ 5.2.1) My Poor TEKK Radio - Dangers of a Baycom Driver
+        -----------------------------------------------
+
+   Around the end of March, early April of 2011, I smoked an expensive 70cm Tekk Radio :]
+
+     "Accidental comm port conflict, darn it all, took me 10 minutes to notice
+      my baycom driver was sitting on the PTT to my Tekk radio, and suspect the
+      damage has been done, it's not working anymore"
+
+   You may seriously want to consider some type of PTT watchdog circuitry to
+   protect your radio, heatsinking on these things was not the greatest, and
+   this resulted in a good discussion on the NOS-BBS list back then.
+
+   I wound up building a 555 timer based circuit to protect the replacement radio.
+
+ 5.2.2) Linux Side Configuration
+        ------------------------
+
+   Load the kernel modules first (as root) - for my system (ttys0) :
+
+       modprobe ax25
+
+       modprobe hdlcdrv
+
+       insmod baycom_ser_fdx mode="ser12*" iobase=0x3f8 irq=4
+
+      you can determine this by 'cat /proc/tty/driver/serial'
+
+   You MUST ensure the kernel interface is *up*, using :
+
+       ifconfig bcsf0 up
+
+   Only then will the 'attach baycom' command work on the JNOS side. If you fail
+   to do this, then the JNOS 'baycom_rx' process will terminate everytime you try
+   and do an attach, and nothing will work.
+
+ 5.2.3) JNOS 2.0 Configuration
+        ----------------------
+
+  The command syntax is as follows (at the JNOS console or in autoexec.nos file) :
+
+     attach baycom vhf 300 bcsf0
+     pause 2
+     ifconfig vhf description "1200 baud on 145.01 Mhz"
+     param vhf 2 256
+     param vhf 3 1
+     param vhf 5 1
+     param vhf TxDelay 20
+
+  JNOS 2.0 has BAYCOM support enabled by default, but you can check your own
+  config.h for the necessary '#define BAYCOM_SER_FDX' entry. If it's missing
+  or has been '#undef', then just correct it, and do the following :
+
+     rm baycom.o config.o version.o
+     make
+
+  * you should not have to do a make clean, it's just a few files.
+
+  This worked very well (repeating myself) - not disappointed at all !
+
+ 5.2.4) The Latest
+        ----------
+
+   I have not tried this for a long time, so I have no idea (yet) whether this
+   even works anymore on today's linux distributions or not, guessing it can.
+
+ 5.3) Network and Routing Considerations
+      ----------------------------------
+
+   Multipsk, Winmor, AWGPE, and Direwolf run a TCP/IP server, so programs
+   like JNOS 2.0 can connect to them and use them as a software based modem.
+
+   When I first started developing and using programs like Multipsk and Winmor, it
+   was a case of my JNOS 2.0 running on some linux host machine, and the software
+   based modem running on a physically separate windows PC with a soundcard. Both
+   boxes would be connected to my local network.
+
+   In this particular scenario, before you can run the software based modem, you
+   have to make sure the Windows machine has a route back to JNOS, since JNOS is
+   not directly on the LAN, but reachable via the linux host on which it runs.
+
+   For example :
+
+     JNOS 2.0 (jnos side tun interface) = 192.168.200.201
+
+     JNOS 2.0 (linux side tun interface) = 192.168.200.200
+
+   Note : IP forwarding must be enabled on the linux host machine for this to work. 
+
+     linux machine (LAN Side) = 192.168.1.60
+
+     windows PC (LAN) = 192.168.1.101
+
+   On the Windows PC, bring up an elevated command prompt, then enter :
+
+     route add 192.168.1.201 192.168.1.60
+
+   If you want to make this route permanent (persistent), then use -P option :
+
+     route -P add 192.168.1.201 192.168.1.60
+
+   On the Windows PC, you should now be able to ping your JNOS 2.0 system :
+
+     ping 192.168.1.201
+
+   The so called Windows machine could be a Linux Desktop as well, same idea,
+   it's just that the linux route command is a bit different, for example :
+
+     route add 192.168.1.201 gw 192.168.1.60
+
+   There are more creative ways to do this now, perhaps you are running JNOS
+   and the software based modem on the same box using virtual box or some kvm
+   instance running windows, or perhaps your software based modem is already
+   meant to run in linux. Routing can get more complex, as can the craziness
+   of some of the firewall rules some linux distributions are using lately.
+
+ 5.4) Multipsk by Patrick F6CTE
+      -------------------------
+
+   What is cool about Patrick's program is that it has a built-in TCP/IP server,
+   allowing outside applications to connect to Multipsk, and use it as a digital
+   modem. As of March, 2009, JNOS 2.0 became part of a list of programs able to
+   direct connect to Multipsk and use it as a packet (ax25) modem. Patrick was
+   kind enough to add the ability to send KISS frames over the tcp/ip server.
+
+   The official site for Multipsk is here :
+
+     http://f6cte.free.fr/index_anglais.htm
+
+   Please visit it to download his software. You must use Multipsk version 4.13
+   or higher, earlier versions do not support KISS over tcp/ip server, but that
+   comment probably doesn't apply anymore since it's now at version 4.43.1 :)
+
+ 5.4.1) Running and Configuring Multipsk
+        --------------------------------
+
+   After starting Multipsk, you will find the "Configuration screen".
+
+   Click "TCP/IP server On" button to start automatically the TCP/IP server.
+
+   Click on big button "RX/TX screen" to start the decoder, and authorize
+   the TCP/IP connection required by Windows.
+
+   It is strongly recommended to calibrate the sound-card: click on the
+   "Adjustments" menu button, then select the "Determination of the RX/TX
+   sound-card sampling frequencies" option and push on the "Determination
+   of the 48 KHz RX sampling frequency (test on 3 minutes)" button. At
+   the end of the test, click on "Return".
+
+   Click on the "PACKET+APRS" orange button.
+
+   To use the TCP/IP possibility, click in the "Options" button which opens
+   the window "Packet parameters", then push the "KISS through TCP/IP" button
+   located in the "Miscellaneous" box. Click on "OK".
+
+   Push the "KISS" button. That's all for Multipsk.
+
+ 5.4.2) Multipsk Additions early 2013
+        -----------------------------
+
+   Patrick posted some additional information from the user manual, to the
+   Multipsk Yahoo List end of February, 2013 :
+
+    It is reminded that 3 possible parameters can be added on the
+    Multipsk command line: TCP_IP_ON to switch the TCP/IP interface on,
+    RX_TX_SCREEN to open the RX/TX screen, and MINIMIZE to minimize the
+    RX/TX screen (Multipsk appearing as an icone).
+
+  Note about the sound level ("Level" indication in % at the top of the
+  screen): an AF level superior or equal to 10 % is OK. About 50 % is ideal
+  (but not critical). In case of very low AF level, select "16 bits" in the
+  "Determination of the RX/TX sound-card sampling frequencies" option
+  ("Adjustments" menu button),
+
+  About the help in Multipsk:
+
+  To bring up the text help (contextual sensitive one), click on the right
+  button of the mouse, with the cursor over the mode button "KISS", for
+  example).
+
+  Also use the button hints (wait a fraction of second over a button).
+
+ 5.4.3) JNOS 2.0 Configuration
+        ----------------------
+
+   Simply run the following command at the JNOS console or in autoexec.nos file :
+
+     attach multipsk psk 192.168.1.101 3122
+
+   JNOS 2.0 will try to connect to Multipsk once a minute, watch the JNOS log.
+
+   Once connected, the new 'psk' port is just like any other AX.25 port.
+
+ 5.5) WINMOR Sound Card TNC
+      ---------------------
+
+   Not for AX.25 (packet), but I was interested in alternatives to the Pactor
+   modems, so around the end of April, 2010, I wrote a prototype interface for
+   the WINMOR Sound Card TNC software.
+
+      << not sure how I want to discuss this section yet >>
+
+   You may wish to read section 8) HF Digital Device (HFDD) Support.
+
+ 5.6) AGW Packet Engine
+      -----------------
+
+   The prototype AGWPE interface for JNOS 2.0 came out end of February, 2012,
+   and it too has a built-in TCP/IP server, allowing outside applications to
+   connect to it, and use it as a digital modem.
+
+   Only single port operation is supported, dual port in the future ? Parameter
+   changes are not possible from JNOS. You will have to do it in the the AGWPE
+   software itself, which is probably not a bad idea actually.
+
+   JNOS does all the ax25 frame handling, so only 'K' frames are used.
+
+   The official site for SV2AGW Packet Radio is here :
+
+     https://sv2agw.com/ham
+
+ 5.6.1) Running and Configuring AGWPE
+        -----------------------------
+
+   When you setup a new port, under 'Properties', under 'Tnc Setup',  make sure
+   the 'Tnc Sub Type' is set to 'KISS Simple', select 'SinglePort', and uncheck
+   the 'ExitKiss On Exit' button.
+
+   Under the 'Tnc Commands' section, select 'Let me Control Parameters', since
+   the code does not exist yet for JNOS to adjust the AGW PE parameters itself.
+
+ 5.6.2) JNOS 2.0 Configuration
+        ----------------------
+
+   Simply run following command at the JNOS console or in autoexec.nos file :
+
+     attach agwpe agw 192.168.1.101 8000
+
+   JNOS will try to connect to AGW PE once a minute - watch the JNOS log.
+
+   Once connected, the new 'agw' port is just like any other AX.25 port.
+
+ 5.7) Direwolf
+      --------
+
+   Apparently Direwolf uses an AGWPE style interface. I've never tried it, but
+   the JNOS 2.0 configuration is identical to how one uses the AGWPE software.
+
+   It's always nice to hear reports that one's software is working. I recently
+   received a report from Henk saying he has been using Direwolf with JNOS and
+   the AGWPE interface for about a year now, and it works fine. The system is
+   up 24/7 and he has never had any problems with the setup. So thank you.
+
+ 5.8) SCS WinRPR Robust Packet Software Modem
+      ---------------------------------------
+
+   In early November of 2020, I got a tip about a new windows based software
+   modem that could do Robust Packet Radio using a sound card. This was very
+   exciting, so exciting that I had a new KISS over TCP/IP interface written
+   for it in a matter of hours - a stripped down version of my AGWPE driver.
+
+   Thanks Jan (pa3gjx) for bringing it to my attention.
+
+   You can download the SCS WinRPR program from the following website :
+
+     https://www.hamradio.me/graphs/WinRPR_Alpha_Software
+
+ 5.8.1) Running and Configuring WinRPR
+        ------------------------------
+
+   For now, please check the following website for my notes :
+
+     https://www.langelaar.net/jnos2/robustpacket
+
+   I have actually been using this successfully to gate APRS packets heard
+   on 30 meters to the APRS Internet System using NOSaprs, which is part of
+   the JNOS 2.0 software. It has been running since around November 14th.
+
+   The ultimate goal is to use my WinRPR setup for HF message forwarding !
+
+ 5.8.2) JNOS 2.0 Configuration
+        ----------------------
+
+   Simply run the following command at JNOS console or in autoexec.nos file :
+
+     attach rp0 winrpr 10.8.10.6 8001
+
+   Note : replace '10.8.10.6' with whatever IP address you are using.
+
+   JNOS will try to connect to SCS WinRPR once a minute - watch the JNOS log.
+
+   Once connected, the new 'rp0' port is just like any other AX.25 port.
+
+   I'm also trying something different with the logging. If JNOS is not able
+   to connect to WinRPR for long periods of time, it will back off the number
+   of log entries over time, the idea being not to have 'connect failed' put
+   into the log each and every minute, filling up the log - experimental.
+
+ 5.9) Fldigi
+     -------
+
+   Support for FLDIGI started with JNOS 2.0j.7s - June of 2015
+
+   Ths official site for FLDIGI is -> http://www.w1hkj.com
+
+   JNOS can attach a KISS port to FLDIGI - experimental, for example :
+
+     # connection to fldigi is like AXUDP, using UDP port 10000
+     attach axudp hf 256 192.168.1.174 ve4klm 10000 10000
+
+     # then configure the port for FLDIGI KISS mode
+     attach fldigi hf
+
+   The comile option (in your config.h) if you don't have it already :
+
+     #define FLDIGI_KISS
+
+   This is NOT a TCP/IP server modem - but routing concepts still apply.
+
+ 5.10) EA5HVK VARA HF and VARA FM Software Modems
+       ------------------------------------------
+
+   The original VARA software modem support was strictly about PPP over VARA, to
+   implement some type of IP Bridge, after a few weeks of experimentation, it is
+   fairly clear that PPP over VARA is not great (terrible latency), it certainly
+   does work, but it is no where near the most efficient way to utilize VARA.
+
+   The PPP over VARA (IP Bridge) has it's own documentation, see the file :
+
+     https://www.langelaar.net/jnos2/documents/j2varanotes.txt
+
+   The most recent update of the VARA code features the so called Access Mode,
+   allowing you to actually forward with Winlink Express running in VARA HF P2P
+   mode, please refer to the section immediately below on how to do this.
+
+ 5.10.1) Access Mode - Forwarding (B2F) with Winlink Express station
+         ------------------------------------------------------------
+
+   All you need to do is attach a VARA interface (just like the PPP stuff), and
+   then create an entry in your forward.bbs configuration file, the same as how
+   you would setup to any other remote BBS you may be forwarding with, then it
+   is just a matter of kicking the mailbox to get things going.
+
+   Here is an example of how you would attach the VARA software modem :
+
+     attach vara vara0 1500 10.8.10.6 8300
+
+   vara0 is the name of the interface (port), 1500 stays as is, 10.8.10.6 is
+   the IP address of the windows PC on which VARA software modem is running,
+   obviously you would put in your own IP address, and 8300 is the command
+   port of the VARA software modem.
+
+   JNOS will automatically set the data channel to command port + 1, so in
+   this case the VARA software modem should be configured to use 8300 for
+   the command channel and 8301 for the data channel.
+
+   Here is an example of a forward.bbs entry :
+
+     -------
+     wq6n
+     vara ve4klm wq6n
+     wq6n
+     -------
+
+   Note the new connect command 'vara', the syntax is simple, first callsign
+   is that of your own JNOS system, the second callsign is that of the remote
+   system you are calling, easy enough.
+
+   Now you can issue commands like 'mbox kick wq6n' or 'mbox kick Wq6n', you
+   can add the Poll option to this forward.bbs entry if you want as well.
+
+   Give section 5.3) Network and Routing Considerations a good read, since
+   JNOS and the Windows box running VARA will most likely NOT be directly
+   on the same subnet or network. Routing is important for them to talk.
+
+ 6) Reference by Remote Call Instead of AX.25 Control Block
+    -------------------------------------------------------
+
+   There are three commands in JNOS 1.11f where you have to enter an 8 digit
+   hexidecimal identifier known as the AX.25 control block, also shown as axcb
+   or &AXB, check the original user manual for the commands below :
+
+     ax25 status [<axcb>]
+
+     ax25 kick <axcb>
+
+     ax25 reset <axcb>
+
+   JNOS 2.0 allows you to specify the remote callsign instead of the &AXB value,
+   which I think is a quicker way to kick a session, rather than having to first
+   use 'ax25 status' to get the numerical identifier, then trying to remember it,
+   and then trying to type it in. This allows you to respond quicker to issues.
+
+   For instance, here is a typical result of using 'ax25 status' :
+
+     jnos> ax25 status
+     &AXB     Snd-Q   Rcv-Q   Remote    Local     Iface  State
+     00a637e0 0       0       VE2PKT-13 VE4KLM-3  que    Connected
+     00ab36b0 0       0       VE3MCH-8  VE4KLM-3  bob    Connected
+     00abf260 0       0       AA6HF-4   VE4KLM-3  cal    Connected
+     008f1710 0       0                                  Listening
+
+  If I wanted to kick Jack's session, in JNOS 1.11f I would have to :
+
+     ax25 kick 00abf260 
+
+  With JNOS 2.0, it's a simple matter of doing this instead :
+
+     ax25 kick AA6HF-4
+
+  That's not to say you can't use the numerical identifier anymore.
+
+ 7) IP Routing to Dyn DNS Style Remote Hosts
+    ----------------------------------------
+
+  A route is typically added using the 'route add' command, for example :
+
+     route add 44.64.0.0/16 encap 192.4.8.12
+
+  Check original user manual for 'route [<subcommand>]' for syntax and options.
+
+  JNOS 2.0 allows you to specify a host name instead of the gateway ip address,
+  which tells JNOS 2.0 to periodically resolve the host name to make sure that
+  we have the 'as current as possible' IP address of the remote gateway.
+
+  So the route command becomes something like the following example :
+  
+     route add 44.64.0.0/16 encap example.dyndns.org
+
+ 8) HF Digital Device (HFDD) Support
+    --------------------------------
+
+  << in progress, thanks for your patience >>
+
+ 9) SMTP Gateway Options
+    --------------------
+
+  New SMTP gateway options, the old way just didn't work for alot of people,
+  as it would first try to deliver direct to a host, then to MX if enabled,
+  and finally to an smtp gateway (as a last resort) if you had one setup.
+
+  JNOS 2.0 has this enabled by default, but you can check your own config.h for
+  the necessary '#define SGW_EXCEPTIONS' entry. If it's missing or is '#undef',
+  then just correct it, and do the following :
+
+     rm smtpcli.o smtpserv.o
+     make
+
+  * you should not have to do a make clean, it's just a few files.
+
+ 9.1) Command Syntax
+      --------------
+
+   Two (2) new subcommands have been added to the smtp gateway syntax :
+
+       smtp ga mode [original|force|first|last]
+
+       smtp ga exception add ip mask
+       smtp ga exception delete ip mask
+       smtp ga exception  (to list)
+
+   The original way to define the gateway has not changed :
+
+       smtp ga [A.B.C.D | none]
+
+   If mode is not configured, then JNOS will function the old way.
+
+   The 'force' mode sends ALL smtp requests direct to the gateway,
+   nothing is sent direct to a host, and no MX records are tried.
+
+   The 'first' mode does the same, but allows for exceptions, of
+   which are configured using the 'smtp ga exception' subcommand.
+
+   Exceptions basically follow the old way, BUT the gateway will
+   not be attempted as a last resort if all else fails.
+
+   Why have a 'force' ? Perhaps you are running 'first' with a
+   list of exceptions, and for some reason you need to force all
+   traffic to a gateway without having to reconfigure everything.
+
+   The 'last' option does not do anything, and 'original' simply
+   switches back to old way - I doubt anyone will use those two.
+
+   Example (this is what I am currently running on my system) :
+
+    smtp ga A.B.C.D
+
+    smtp t4 60          # 1 minute timeout
+
+    smtp ga mode first
+
+    # send everything to gateway except 44 stations, they go direct
+    smtp ga exception add 44.0.0.0 0xff000000
+
+    # other exceptions (examples) - you can have as many as you want
+    smtp ga exception add E.F.G.0  0xffffff00
+    smtp ga exception add X.Y.Z.Z  0xffffffff
+
+   Alot of this functionality actually comes from the 'SMTP Deny Relay
+   Exceptions' code (SDRE), which I wrote some time ago. I was able to
+   use the same code for this enhancement (with some restructing).
+
+ 10) SMTP Deny Relay Exceptions
+     --------------------------
+
+  By default, JNOS 1.11f will deny SMTP relay from hosts not in any of our
+  subnets, but there may be some we want to allow in. For instance, I would
+  use a Thunderbird email client at work to check my JNOS system for new mail
+  from time to time, and it would be nice if I could reply to those messages
+  using the same email client. The existing '#define SMTP_DENY_RELAY' source
+  code did not allow that.
+
+  JNOS 2.0 features a new SMTP Deny Relay Exception (SDRE) list, allowing me
+  to do what I described in the previous paragraph.
+
+  Also, the original code would send out an 'Unknown' string whenever JNOS
+  had to reply with a 'DENY RELAY' response. With JNOS 2.0, a new 'NoRelay'
+  string is used instead, gives a more accurate indication of what's going
+  on, instead of confusing the users.
+
+  JNOS 2.0 has this enabled by default, but you can check your own config.h
+  for the necessary '#define SDR_EXCEPTIONS' entry. If it is missing, or if
+  it is '#undef', then just correct it, and do the following :
+
+     rm smtpcli.o smtpserv.o version.o
+     make
+
+  * you should not have to do a make clean, it's just a few files.
+
+ 10.1) Command Syntax
+       --------------
+
+   From the JNOS 2.0 console (F10) or in your autoexec.nos file :
+
+     smtp relay [add|delete] [ip] [netmask]
+
+     smtp relay [list]
+
+   For instance, the following entry allows me to use my thunderbird client
+   well outside any of my JNOS subnets (over an openVPN connection) :
+
+     smtp relay add 10.8.10.6 255.255.255.255
+
+   Of course, you need to make sure you have routing between your JNOS
+   and any of the exception networks, and firewalls are not blocking.
+
+ 11) Web Interfaces
+     --------------
+
+   JNOS 2.0 has multiple Web interfaces for various functions.
+
+ 11.1) User BBS
+       --------
+
+   You can access the User BBS through your browser, nothing fancy, just
+   simplistically functional - a command line text input, and a box text
+   area (scrollable) as the main output screen. There are two checkboxes
+   at the top as well, one to send CTRL-T, and one to clear the screen.
+
+   When you first connect, you have to enter callsign and password.
+
+ 11.1.1) Starting Web Interface
+         ----------------------
+
+   From the JNOS 2.0 console (F10) or in your autoexec.nos file :
+
+     start httpvnc [tcp port]
+
+   The tcp port is optional and defaults to 10000 if not specified.
+
+ 11.1.2) Accessing Web Interface
+         -----------------------
+
+   Point your browser to the httpvnc tcp port of your JNOS system, for example :
+
+     http://192.168.200.201:10000
+
+   You could run a perl based tcp proxy script to forward internet side requests
+   to your JNOS hidden deep within your internal networks, for example :
+
+     http://www.langelaar.net:10501
+
+   Or you could use iptables or whatever to do the same.
+
+ 11.1.3) Security Considerations
+         -----------------------
+   
+   The httpvnc service is wide open, the JNOS tcp access command should be
+   used to tighten up any network access. If you decide to use a tcp proxy
+   script to forward internet side, then you need to use firewall rules on
+   your actual linux box, since all requests will appear to come from the
+   linux box itself, not the remote host asking for it.
+
+   For version 2.0m.5D and later of JNOS, the explanation below no longer
+   applies, because I have rewritten portions of the code to use the POST
+   mechanism, replacing the GET mechanism used in the original code. The
+   explanation has been left here for historic reasons, and my own whim.
+
+   I am working on it, but be warned, the password entered when you first
+   access the server, is clearly shown in the URL after you login into the
+   web interface, and it's always in sight in the address bar. This was an
+   oversight on the original prototype, which I never bothered addressing.
+    (well, it is now, but you need to be using JNOS 2.0m.5D or later)
+
+ 12) Multi Factor Authentication (MFA)
+     ---------------------------------
+
+   In version 2.0m.5E of JNOS, I introduced a prototype implementation of
+   what some may refer to as MFA, for incoming telnet sessions, adding an
+   important second layer of protection to a protocol used frequently in
+   the xNOS world. It's probably not a great idea to open up your telnet
+   port to the rest of the world, even if you are able to somehow manage
+   access and firewall rules, but if you really need to, adding MFA into
+   the process will certainly be a big help in securing your system.
+
+   Disclaimer : I'm not saying that if you use MFA, it gives you reason
+                to open up your telnet to the rest of the universe, no.
+
+   MFA is simply a second, or third, or higher level of authentication.
+
+ 12.1) How it works for non BBS users
+       ------------------------------
+
+   A user telnets into a JNOS system, they get the usual login and
+   password prompts, but then they are told to check their mail for
+   an authentication code, here is an example screen shot :
+
+     # telnet 192.168.4.201
+     Trying 192.168.4.201...
+     Connected to 192.168.4.201.
+     Escape character is '^]'.
+
+     JNOS (rprjnos)
+
+     login: ve4klm
+     Password: 
+
+     Auth (check your mail):
+
+   The user will have received an email something like this :
+
+     Date: Fri, 20 Nov 2020 02:03:10 CST
+     From: sysop@rprjnos
+     To: maiko@pcsinternet.ca
+     Subject: JNOS Authentication Code
+
+     RMCSSUGSIJ
+
+   Simply enter the passcode back at your JNOS telnet session, and you're in !
+
+   If you get it wrong, then you are disconnected. The authentication code is
+   randomly generated by JNOS and will be different each and every time there
+   is a new incoming telnet session.
+
+ 12.2) How it works for BBS users
+       --------------------------
+
+   In the case of BBS users, most telnet sessions will be of the forwarding
+   kind, which complicates things. Any forwarding scripts will be unable to
+   handle these random codes, never mind being able to check emails.
+
+   Of course you could exclude the particular IP address from MFA prompting,
+   which is possible, see further below, but that may not be practical ...
+
+   The way around this is that IF a user is marked as a BBS user, then JNOS
+   will accept a FIXED VALUE authentication code that has been distributed
+   in advance to your (only) incoming telnet forwarding partners. In other
+   words, BBS users are not emailed an authentication code. Being this is
+   a prototype, there is only one code in use for ALL of your BBS users.
+    (maybe down the road we can configure per BBS user, but not now)
+
+   The prompt will look a bit different, this time it's just :
+
+     login: ve4klm
+     Password: 
+
+     Auth:
+
+   The fixed value authentication code is set on the MFA enabled JNOS
+   system using a new 'mbox MFAfixed <code>' command, for example :
+
+     jnos> mbox MFAfixed A32D#2F
+
+ 12.2.1) Forwarding Script required to forward with MFA enabled JNOS
+         -----------------------------------------------------------
+
+    Below is a section of my forward.bbs file which lets me telnet forward
+    to my MFA enabled JNOS 2.0 test system. This configuration was actually
+    refined quite recently (December 1rst, 2020), after finally sitting my
+    self down and figuring out how the actual forward.bbs commands work :
+
+     -------
+     ve4pkt
+     telnet 192.168.200.201
+     +login:
+     *1
+     .ve4pkt
+     +Password:
+     @1
+     .mypassword
+     +Auth:
+     *1
+     .A32D#2F
+     mb
+     ww
+     -------
+
+   If you want a detailed and technical explanation of this same forwarding
+   section, then check out the new Section 13, where I heavily document it.
+
+   In the example above, the fixed authentication code expected by the
+   system you are forwarding TO is A32D#2F (maximum length 10) ...
+
+   Note to myself : bad example, one should never use their name for a
+   password, that's a bad habit that has developed in the xNOS world.
+
+ 12.3) Allowing Exemptions to MFA prompting
+       ------------------------------------
+
+   You can exclude ip addresses and subnets from getting the MFA prompt,
+   using a new 'mbox MFAexclude' command, for example :
+
+     jnos> mbox MFAexclude 127.0.0.1 192.168
+
+   The command is pattern based, put in as many patterns as you want.
+
+   The example above disables MFA prompting when you issue the 'BBS'
+   command at the JNOS console, or if I telnet from my hidden network
+   or from the linux system hosting my JNOS instance, there should be
+   no need for that headache, so instead of hardcoding it, I figured
+   this is a better way.
+
+ 12.4) Setup of email address for non BBS users
+       ----------------------------------------
+
+   Being this is a prototype, I am depending on USERLOG being defined,
+   so the email address in use at this time is the one provided by any
+   user when use the REGISTER command at the BBS user prompt. We can
+   play with that or completely change it for subsequent releases.
+
+ 12.5) Setting up the EMAIL side of things
+       -----------------------------------
+
+   JNOS has no authenticated SMTP, so what I do on my system is run a
+   simple local postfix configuration, with JNOS smtp gateway pointing
+   to it, basic SMTP (port 25) as one of the trusted postfix subnets,
+   with strict rules on what outgoing email addresses are allowed.
+
+   In fact, I setup email aliases on my postfix, forcing users that
+   want to use MFA prompting to use those aliases to get the email to
+   the outside world, instead of letting them use whatever email they
+   want, it's important to protect the email side of things here.
+
+   I will leave it to the sysop to figure this out on their own.
+ 
+ 13) Some NETROM Enhancements
+     ------------------------
+
+   No more hardcoding of 2 netrom parameters, and the ability to search
+   for a 'pattern' of nodes (both for the BBS user and the JNOS sysop).
+
+ 13.1) obsoinit, obsominbc, and acktime can be set by the sysop now
+       ------------------------------------------------------------
+
+   As of 2.0m.5B - A couple of parameters previously hardcoded by a few people,
+   can now be set at the command line. So please consider using the following
+   command instead :
+
+      netrom obsoinit <value>     default is 6, for NEDA use 5
+      netrom obsominbc <value>    default is 5, for NEDA use 3
+
+   As for acktime, there has always been a command to set the value :
+
+      netrom acktime <value>      default is 3000
+
+  13.2) BBS user can now pass a filter or pattern to the Nodes command
+        --------------------------------------------------------------
+
+  I finally got tired of entering the NODES command at the BBS prompt, only
+  to watch several hundred entries stream by and miss the one I want, so now
+  you can pass a substring to look for (not the same as a pattern), ie :
+
+     Area: ve4klm (#1) >
+     nodes uro
+     NJDURO:MB7NJD-5   QSOCCT:N1URO-11   SQLURO:N1URO-13    MFNOS:N1URO-14
+     RSBYPI:N1URO-2     X-URO:N1URO-3    BBSURO:N1URO-4    UNIVLE:N1URO-5
+      DXURO:N1URO-6
+     *** 9 nodes displayed
+
+  The 'nodes *' remains the same, the substring filter is case insensitive.
+
+ 13.3) Using a filter or pattern with the netrom route JNOS console command
+       --------------------------------------------------------------------
+
+  For the JNOS console, it's a bit more complicated. To accomodate the feature
+  into the 'netrom route' console command, the command syntax required fixing.
+
+  Up till now, most people are probably used to entering just 'netrom route'
+  to get a node dump, just like if you typed in 'nodes' at the BBS prompt. I
+  know it might be convenient, but it breaks syntax convention and makes it
+  difficult to add new features, so sorry - you can't do that anymore :)
+
+  Now you have to enter 'netrom route nodes', and if you want to pass the
+  substring (like you would at the BBS prompt), then it would look like :
+
+    jnos> netrom route nodes VK 
+    DOTXRP:VK2DOT-1   DOTFBB:VK2DOT-6     DOTN:VK2DOT-7    DOTCH:VK2DOT-8
+    HGRBBS:VK6HGR-14  HGRNOD:VK6HGR-15  NODHDM:VK7HDM-4
+    *** 7 nodes displayed
+
+  This is because 'netrom route' actually has 4 other subcommands, so putting
+  in the 'nodes' subcommand brings it all to a nice consistent interface such
+  that if you enter just 'netrom route' you see ALL available subcommands.
+
+ 13.4) Change of syntax to the netrom route JNOS console command
+       ---------------------------------------------------------
+
+  As explained in the previous section, this is just a heads up for people.
+  
+ 14) SID Capture
+     -----------
+
+   Recent versions of JNOS 2.0 have the ability to track the SID of incoming
+   forwarding sessions, allowing you to track the remote system callsign, as
+   well as time last connected, and how they got in (netrom, port, telnet).
+
+   The command to display the entire SID Capture listing is :
+
+     jnos > mbox sid
+  
+   An example of the listing is shown below :
+
+        [FBB-7.0.10-AB1FHMRX$]
+         gb7cip 20:06:02  GB7CIP @ GB7CIP
+        [JNOS-2.0.6.URO.C-B1FHIM$]
+         ve3cgh 11:37:17  ve3cgh.ampr.org
+        [TNOS-3.00-FHIMW$]
+         ve2har 18:57:57  VE2HAR-8 @ VE2HAR-9
+        [FBB-7.05G-AB1FHM$]
+         ve2pkt 17:47:34  VE2PKT @ VE2PKT
+        [OPENBCM-1.08-5-G2F4A-AB1D1FHMRW$]
+         i0ojj  20:15:10  host-79-52-228-200.retail.telecomitalia.it
+        [JNOS-2.0M-B1FHIM$]
+         ve3tok 20:24:55  port.ve3mch.ampr.org
+        [JNOS-2.0M.5C-B1FHIM$]
+         n2nov  20:25:21  N2NOV-4 on port newyork
+         ve3cgr 17:58:20  jnos.ve3cgr.ampr.org
+         aa6hf  20:24:03  AA6HF-8 on port cal
+         i0ojj  20:13:19  i0ojj.ampr.org
+        [BPQ-6.0.20.10-B1FIHJM$]
+         va3tok 20:14:05  linux.ve3mch.ampr.org
+        [JNOS-2.0M.5B-B1FHIM$]
+         n2nov  18:09:25  1d N2NOV-4 on port newyork
+        [FBB-7.07-AB1FHM$]
+         ve3tok 20:11:25  linux.ve3mch.ampr.org
+        [WL2K-5.0-B2FWIHJM$]
+         wl2k   03:39:54  1d winlink-lb-628697408.us-east-1.elb.amazonaws.com
+
+   You will notice the collected information is grouped by SID, giving you a
+   decent idea of the software other systems are using to forward with you.
+
+   This is also useful in that it shows if any remote systems have upgraded
+   their software. For example you may see entries like theses below :
+
+        [JNOS-2.0M.5D-B1FHIM$]
+         ve3tok 01:22:41  port.ve3mch.ampr.org
+         n2nov  01:40:15  N2NOV-4 on port newyork
+         ve3cgr 01:23:44  jnos.ve3cgr.ampr.org
+         i0ojj  19:33:51  i0ojj.ampr.org
+        [JNOS-2.0M-B1FHIM$]
+         ve3tok 00:55:50  4d port.ve3mch.ampr.org
+        [JNOS-2.0M.5C-B1FHIM$]
+         aa6hf  01:34:15  AA6HF-8 on port cal
+         i0ojj  14:28:08  8d i0ojj.ampr.org
+         n2nov  00:20:00  11d N2NOV-4 on port newyork
+         ve3cgr 08:25:41  12d jnos.ve3cgr.ampr.org
+
+   Note the very last entry for Ron (ve3cgr) with '12d' in it. This is
+   telling you that his system was last heard using JNOS 2.0m.5C 12 days
+   ago at 8:25:41 local time. If you look further up, you will see he's
+   now using JNOS 2.0m.5D and he last connected today at 1;23:44 local
+   time. In other words he probably upgraded his system 12 days ago.
+
+   I wish I could show examples of the other software upgrading during
+   my JNOS runtimes, but being this is my development system, it never
+   runs for long enough for that to usually show up (but it will).
+
+ 14.1) SID Capture to file
+       -------------------
+
+   At this time, if you restart JNOS, the SID Capture listing is lost. I have
+   yet to create a save or load feature, so an alternate way for you to save
+   the data is to simply redirect the jnos console command file like this :
+
+     jnos> mbox sid > /tmp/mbox.sid.27Nov2020.txt
+
+   Then from the linux prompt, you can retrieve the content as follows :
+
+     root@slackware:/jnos/src/dev_2.0m.4# more /tmp/mbox.sid.27Nov2020.txt
+
+         [FBB-7.0.10-AB1FHMRX$]
+          gb7cip 20:06:02  GB7CIP @ GB7CIP
+         [JNOS-2.0.6.URO.C-B1FHIM$]
+          ve3cgh 11:37:17  ve3cgh.ampr.org
+         [TNOS-3.00-FHIMW$]
+           ...
+
+   You can use the jnos console 'at' command to schedule it if you like.
+
+ 15) Enhanced Trace Command
+     ----------------------
+
+   The problem with tracing to a file was that the operating system would only
+   flush to disk every so often (which makes sense of course), but if you had to
+   use the file for realtime monitoring, it wasn't very practical at times.
+
+   In version 2.0i, November 23, 2010 (in the release history) I added syncing
+   or flushing of the trace log files. By syncing the log file every few seconds
+   or milliseconds (user selectable), it suddenly became very practical to use.
+
+   The 'trace' command now features an extra parameter (in milliseconds).
+
+   For example, to trace port ax0 to file, and flush to disk every 1 second :
+
+     jnos> trace ax0 0x211 ax0.log 1000
+
+   If you specify a sync value less then one second, you are warned :
+
+     jnos> trace encap 0x211 encap06Dec2020.log 500
+     warning - your sync is under one second !!!
+     encap: input output (Hex/ASCII dump) trace file: encap06Dec2020.log sync: 500 ms
+
+   Note : small sync values can use up CPU and affect your JNOS performance !
+
+   For realtime monitoring, you can then run a tail command on the linux side :
+
+     root@slackware:/jnos/rte# tail -f encap06Dec2020.log 
+     IP: len 32 44.135.92.10->44.135.124.1 ihl 20 ttl 62 prot ICMP
+     ICMP: type Echo Request id 132 seq 0
+     0000  45 00 00 20 71 41 00 00 3e 01 da 82 2c 87 5c 0a  E.. qA..>.Z.,.\.
+     0010  2c 87 7c 01 08 00 b4 f6 00 84 00 00 66 72 dc 12  ,.|...4v....fr\.
+
+     Sun Dec  6 14:14:10 2020 - encap sent:
+     IP: len 32 44.135.124.1->44.135.92.10 ihl 20 ttl 254 prot ICMP
+     ICMP: type Echo Reply id 132 seq 0
+     0000  45 00 00 20 f5 fa 00 00 fe 01 95 c8 2c 87 7c 01  E.. uz..~..H,.|.
+
+ 16) The RDATE Comand (gone)
+     -----------------------
+
+ Chances are you will have to #undef RDATECLI at some point, the reason being
+ the stime() function no longer exists in the more recent gcc/glibc versions.
+
+ If you don't do it, you MAY get an unresolved reference to stime() during the
+ linkage portion of the compile. It isn't a simple change, and since we already
+ have 'ntpd' on the linux side, there's no point supporting 'rdate' anymore.
+
+ 17) JNOS Log Triggers
+     -----------------
+
+ As of 2.0m.3, JNOS has the ability to run commands based on what it sees in the
+ main log file - in real time. Documentation is very rough, and this feature is
+ still very much the prototype version, it still needs work (revamping perhaps).
+
+ The best way for me to explain it at this time is by examples :
+
+ a) notify me 'instantly' if Ron's system times out during a session
+
+     log trigger add "VE3CGR&timed out&" "mailmsg ve4klm \"ve3cgr timeout\""
+
+ This looks for 2 phrases "VE3CGR" AND "timed out" and invokes the JNOS
+ mailmsg console command to email me saying we've timed out.
+
+ Note the use of & for BOTH phrase, it's case sensitive (currently), and also
+ note you can include spaces in a phrase. The command only happens if BOTH of
+ the  phrases match !
+
+ b) run a shell script if any particular words show up in the log
+
+     log trigger add "error|warning|WARNING|" "sh ./notifyme.sh"
+
+ This looks for 3 phrases "error" OR "warning" OR "WARNING" and runs the shell
+ script 'notifyme.sh'. The script will run if ANY single phrases is matched.
+
+ At present you can NOT mix use of the '&' and '|' operators.
+
+ If you have only one phrase, you still need to terminate with an operator, either
+ one will do. The whole matching algorithm needs work, it's not pretty, sorry !
+
+ Documentation could be better, but the examples should help for now ?
+
+ 18) Enhanced AX25 Heard List
+     ------------------------
+
+ JNOS 2.0 tracks calls heard via a digipeater, complimenting the existing lists
+ of calls heard direct, and destination calls heard. As well, you can now save
+ the entire AX25 heard (all 3 lists) to file, and you can load them from file.
+
+ So you can now actually monitor for stations not directly heard. This feature
+ came about due to my crazy obsession with Robust Packet lately and seeing all
+ the APRS frames coming in on 30 meters, many via K4KPN-10, so it was nice to
+ to know who else was actually on frequency, without hearing them directly.
+
+ The syntax of 'ax25 heard' has changed from the original JNOS, ie :
+
+   jnos> ax25 heard
+
+   Display stations heard on ax25 interfaces
+
+    Usage : ax heard *[ dest | digid ] all | <iface>
+
+            ax heard save | load *[ filename ]
+
+      * denotes an optional single argument
+
+    Some examples below :
+
+      ax25 h all            traditional syntax, but requires 'all' for ALL ports
+      ax25 h digid rp0      NEW show stations heard via a digipeater on port rp0
+      ax25 h ax0            traditional syntax, show directly heard port ax0
+      ax25 h dest all       show destination calls heard on ALL ports
+
+    Note : 'ax25 dest' and 'ax25 hearddest' are no more - use 'ax25 heard' now.
+     (the default save or load file is 'AxHeardFile' in JNOS root directory)
+
+   You 'could' add these commands to the very end of your autoexec.nos :
+
+       # 21May2021, Load the last saved heard lists
+       ax25 heard load /tmp/newsaveit.txt
+
+       # 21May2021, save heard lists every 15 minutes from this moment on
+       at now+0015 "ax25 heard save /tmp/newsaveit.txt+"
+
+   That way you can keep a list going for as long as you want, it will always
+   be maintained everytime you restart your JNOS system, and the time stamps
+   should be fairly well preserved in the process ...
+
+ 19) The APRS side of JNOS
+     ---------------------
+
+ Did you know JNOS 2.0 has APRS capabilities - the NOSaprs 'module'. My
+ original documentation can be found at the website (URL) below :
+
+    https://www.langelaar.net/projects/nosaprs
+
+ 19.1) The APRS 'destination' call or 'tocall'
+       ---------------------------------------
+
+ In mid June, Bob Bruninga WB4APR was kind enough to add an entry for NOSaprs
+ to his official 'tocall' list maintained at the website (URL) below :
+
+    http://aprs.org/aprs11/tocalls.txt
+
+ NOSaprs is now 'assigned' APN2XX, with APZ200 noted as being used by older
+ versions of JNOS. It's been quite some time since NOSaprs was introduced,
+ so it's not really experimental anymore.
+
+ Thank you Janusz HF1L (ex.SP1LOP) for suggesting this change.
+
+ If you use NOSaprs to TX, then you can set the APRS path as follows :
+
+    # 30Dec2020, So K4KPN-10 and others will catch it and pass it on further
+    ax25 route add apn20h rp0 wide1-1
+
+ In the above example, rp0 is my robust packet port on 30 meters.
+
+ 20) Enhanced TCP Access Controls
+     ----------------------------
+
+ The tcp access function now allows you to insert an entry anywhere into the
+ list. Before this, you could only add entries to the end of the list, so if
+ you wanted to insert a new record you would have to first delete the latest
+ record (or more), then add the new one, then re-add the deleted one(s).
+
+ You might as well just have reconfigured your rules in autoexec.nos, and
+ then restarted your JNOS instead. But no more - check the next section !
+
+ 20.1) Insertion or removal of entries at specific positions in the list
+       -----------------------------------------------------------------
+
+ The new syntax for 'tcp access' is as follows :
+
+ tcp access <permit|deny|delete> [L#] <dest addr>[/<bits>] [lowport [highport]]
+
+ Note the new OPTIONAL [L#] argument. So if you wanted to insert at the very
+ top of the list, you would use L0. Use L1 if you wanted to go down 1 entry
+ from the top, and so on. The # denotes depth from top, and note there is no
+ space between the L and #. Other than that, the command remains the same.
+
+ The L# option does NOT apply to the 'delete' function.
+
+ 20.2) Blackinglisting of bad telnet logins
+       ------------------------------------
+
+ Many of us get bogus telnet login attempts with user names like root, admin,
+ or sh, whatever, basically non-ham calls. So that got me thinking ! Why not
+ give the sysop the option of blacklisting the IP addresses responsible for
+ these login attempts - kind of like the sshblack script from years back,
+ but do it JNOS style.
+
+ Use the following command to enable this feature :
+
+   mbox blacklist N
+
+ where N is a numerical value. 0 means no blacklisting, N is a time value in
+ seconds after which the blacklist expires for any particular IP address. The
+ expiry value is only relevant if you choose to run the new tcp access expiry
+ process, explained further below. If you don't run expiry, then of course the
+ entries will stay until JNOS is restarted, regardless of the value of N.
+
+ The blacklist feature uses the newly added tcp access enhancement to do its
+ work - the initial reason for doing the enhancement in the first place ...
+
+ IF you blacklist, you have to (at minimum) have the following :
+
+   tcp access permit all
+
+ The blacklist code inserts DENY rules PRIOR to existing entries, so even if
+ you are not using 'tcp access', at minimum you need the above default rule.
+
+ 20.2.1) Expiry of Blacklisted items
+         ---------------------------
+
+ You can have JNOS expire blacklist entries at regular intervals. A new sub
+ command has been added to 'tcp access' :
+
+   tcp access expiry N
+
+ where N is in minutes. If you do not run this, your blacklist will continue
+ to grow indefinitely. Nobody says you have to expire them, but your choice.
+
+ 20.2.2) An example configuration for your autoexec.nos
+         ----------------------------------------------
+
+   # blacklist must have minimum a 'permit all' entry
+    tcp access permit all
+
+   # blacklist bad logins for 15 minutes (900 seconds)
+   mbox blacklist 900
+
+   # run expiry process every 20 minutes
+   tcp access expiry 20
+
+ 21) New DATE command
+     ----------------
+
+ Added a new 'date' command for the JNOS console, for example :
+
+   jnos> date
+   Mon Jul 25 17:04:22 2022
+
+ I had been using 'sh date' in my JNOS scripts, but I found this to result in
+ loads of linux zombie processes - so I figured why not just get it directly.
+
+ 22) Customizable help and usage dialogues, minimizing hardcoded help info
+     ---------------------------------------------------------------------
+
+ Slowly and surely I am trying to get rid of hardcoded help and/or usage
+ dialogues in the JNOS source code ; replacing them instead with document
+ files loaded from disk, allowing users to customize the content, perhaps
+ even create them in a different language to better suite their users ?
+
+ A new directory has been added to the JNOS runtime area, for example :
+
+   /jnos/rte/usage
+
+ The latest layout as of this writing is as follows :
+
+   bash-5.1# ls -ls /jnos/rte/usage
+   4 -rw-r--r-- 1 jnos jnos   91 Nov 26  2020 MFAexclude.txt
+   4 drwxr-xr-x 2 jnos jnos 4096 Jun 28  2020 aprs
+   4 drwxr-xr-x 2 jnos jnos 4096 Apr 12  2021 ax25
+   4 -rw-r--r-- 1 jnos jnos 1063 Jun 28  2020 log.txt
+   4 -rw-r--r-- 1 jnos jnos  266 Apr 23 13:32 snmp.txt
+   4 -rw-r--r-- 1 jnos jnos  311 Jun 28  2020 winlinkcalls.txt
+
+ Several JNOS commands already make use of these new files, using the new
+ function, getusage(), which I wrote near the end of May in 2020. It also
+ boasts a prefix feature, which allows you to group subcommands of higher
+ level commands like aprs and ax25 into their own subdirectory, as shown
+ in the listing above. You can edit these to your liking, and you don't
+ have to restart JNOS either after changing their contents.
+
+ I have considered a future language code, so one can have multiple help
+ and usage files for the same command, but each in a different language,
+ based on the language possible configured for a sysop or BBS user, but
+ that's just an idea at this time.
+
+ 23) The JNOS log - option to select daily or single running
+     -------------------------------------------------------
+
+ Back in November of 214, I added Bob's (VE3TOK) mods so that you can now
+ specify a single running nos.log, instead of the daily versions, this is
+ not a compile time option, decided to make it runtime instead,
+
+ 23.1) Syntax for LOG command
+       ----------------------
+
+     Usage: log file [ nos.log | daily ] THEN log [ on | off]
+            disk logging is ON, logfile type is DDMMMYY (daily)
+
+ 24) Next Item
+     ---------
+
+<< page break >>
+
+

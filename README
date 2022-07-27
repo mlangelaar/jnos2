@@ -1,0 +1,18 @@
+
+ People have asked me to put JNOS 2.0 sources on github, so here you go.
+
+ The official JNOS 2.0 site will always be :
+
+   https://www.langelaar.net/jnos2
+
+ Copyright (C) 2004-2022 by Maiko Langelaar, VE4KLM
+
+July 27, 2022
+-------------
+
+Uploaded the latest 2.0m.5Gz source (latest official stable)
+
+Updated changes.txt (release history) and j2addendum.txt (documentation)
+
+Uploaded new development.txt (stuff I am working on) ...
+

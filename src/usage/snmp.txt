@@ -1,0 +1,13 @@
+
+ JNOS 2.0 - SNMP Configuration
+
+  snmp ifaces     list all ports in numerical index form
+
+  snmp ro community [ipaddr pattern]*
+
+   NOTE : if you do NOT specify an ipaddr pattern, then ANYONE is allowed
+
+  snmp sysLocation [any text]
+
+  snmp sysContact [any text]
+

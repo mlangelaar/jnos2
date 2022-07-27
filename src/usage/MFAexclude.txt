@@ -1,0 +1,5 @@
+
+list of ip addresses to exclude from MFA prompting
+
+mbox MFAexlude [ip1] [ip2] ... [ipN]
+

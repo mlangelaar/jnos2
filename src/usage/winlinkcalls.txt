@@ -1,0 +1,11 @@
+
+ JNOS is able to download messages from multiple winlink user accounts
+
+ define your own call and any other user accounts with one command :
+ 
+   mbox winlinkcalls [primary] [other1] [other2] ... [otherN]
+
+ make sure to create a JNOS winlink account for each call specified :
+
+   ./jnospwmgr -a <callsign> -w
+
