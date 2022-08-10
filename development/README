@@ -5,7 +5,9 @@
 
    https://www.langelaar.net/jnos2/documents/development.txt
 
- Last updated 25Jul2022, Maiko Langelaar, VE4KLM
+ Last updated 10Aug2022, Maiko Langelaar, VE4KLM
+
+  * added section 6) to the list below  - Web based BBS access (HTTPVNC)
 
  ----
 
@@ -25,6 +27,8 @@
    4) Kludge Lower Case BID manipulation for incoming 'sb' proposals
 
    5) Multiple Heard Lists for individual ax25 ports
+
+   6) Web based BBS access (HTTPVNC)
 
  You can get more detail on any of these features further below, including
  how to update source files, how to compile, how to configure if needed.
@@ -178,6 +182,59 @@
 
   This is not ready for release, despite having spent a considerable amount
   of time on it, it's not working to my expectations, so who knows when :(
+
+ ----
+
+   6) Web based BBS access (HTTPVNC)
+
+  The 'httpvnc' service on JNOS has been available already for quite a few
+  years, aside from some cosmetics, and reduction of JNOS log entries, and
+  a compiler warning, the biggest change is ; I want to move away from the
+  standard user password, and instead use a security token, similar to how
+  it is done by organizations like github.
+
+  If I am going to allow BBS access via a web browser and from the internet,
+  then the security needs to be higher then it ever has been before. So the
+  only thing you will notice with this latest update is the Password field
+  has been changed to Token field, and it's longer as well, 16 characters.
+
+  In previous versions, the password is taken from ftpusers, same password as
+  for other command line and telnet access, and if one considers how insecure
+  most of those are, a machine generated token is a better approach. Kind of
+  like me adding MFA for the telnet access, but more direct. What this means
+  is that any of your users (including yourself) wanting web access to your
+  JNOS BBS will have to be given a token to use instead of their password.
+
+  Since I have yet to develop the Token code, this latest implementation
+  expects the user to input a Token of the following format :
+
+     Jst_XXXXXXXX
+
+  where XXXXXXXX is the password from the /jnos/ftpusers file
+   (Jst stands for JNOS security token, the ftpusers hack is temporary)
+
+  The average internet surfer will not know to include 'Jst_' in front
+  of the Callsign's regular password. This buys me some time to get it
+  done the proper way, and allows me to showcase the new setup.
+
+  In the meantime, I need to figure out how to store and manage tokens
+  for each callsign (user), including expiry, revocation, and so on.
+
+  The tfn[20] member of HTTPVNCSESS structure has been changed to a pointer,
+  so the code now needs to allocate memory for the session file name. I did
+  this initially because the compiler complained, but it should also negate
+  the possibility of any buffer overflows. Note, this version of code does
+  not free it up when done, not a huge deal at this point, next version.
+
+  Run the following commands to modify existing source and compile :
+
+     cp httpvnc/* .
+
+     make
+
+  I encourage you to use Apache with the mod_proxy module to full secure
+  your JNOS httpvnc traffic - check latest changes.txt (release history)
+  for more information on how to do this. It works very well, very cool. 
 
  ----
 
