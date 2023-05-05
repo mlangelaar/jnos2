@@ -1,0 +1,29 @@
+
+Significant work on RAW sockets to work with IPV6, require for all forms
+of outgoing PING commands to work from both the CONSOLE and BBS prompt :
+
+icmpcmd.c - all outgoing PING commands now work from both the JNOS console
+  and the user BBS prompt, all options tested, they all seem to work.
+
+socket.c - TYPE_RAW now supports IPV6 traffic, also because JNOS uses the
+  linux TAP interface, I have to pullup the ethernet header before we can
+  pullup the ipv6 header. I've modified both recv_mbuf() and send_mbuf(),
+  although no point using send_mbuf(), ipv6_send() is more direct. Tested
+  the use of send_mbuf() in the ping code anyways, and it works fine.
+
+ ipv6.c - reincorporate the RAW IP processing (it was commented out), but
+  it is most certainly required for any RAW socket processing ...
+
+ ip.c - init new ipver field of the modified 'struct raw_ip' for IPV4, the
+  only way for RAW IP processing code to know what version of IP is in use.
+
+ ip.h - added new ipver field to 'struct raw_ip', added 2 prototoypes
+   for IPV6 RAW socket functions
+
+ icmpv6.c - reincororate echo_proc() in the form of new function echo6_proc()
+  (and fixed a next_header typo, ICMP_TCL should be ICMPV6_PTCL)
+
+ icmp.h - added IPV6 variables to 'struct ping'
+
+ version.c - just to make sure people know it's a development version
+

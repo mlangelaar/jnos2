@@ -1,0 +1,3909 @@
+
+ Refresh this page on every visit to ensure you get the latest information.
+
+ I try to update the latest documentation project when time permits :
+
+   https://www.langelaar.net/jnos2/documents/j2addendum.txt
+
+ Latest version of the documentation project is included in the rsync area
+  (not updated yet for this latest version 2.0o, thanks for your patience)
+
+ ------------------------------------------------------------------------
+
+ MARCH 3, 2023 - The latest official release is now JNOS 2.0o
+
+ *** The BIG news is the introduction of IPV6 (native JNOS code) ***
+
+ Big thanks to Bob Tenty, VE3TOK, for pushing me on this, and testing !
+
+
+ differences between 2.0o.2 and 2.0o - April 5, 2023
+ ---------------------------------------------------
+
+  1) Mostly work on IPV6 code, see README.ipv6 for latest details
+
+  2) I have put debugging into nr4subr.c, trying to nail down a really nasty
+     situation, bug, not sure what to call it, gcc related ? no idea if that
+     is true or not, hopefully JNOS logs will give some detail IF it happens
+     on your system. JNOS will crash in the netrom code, and the bizarre thing
+     is that the callback pointer is always 0x10000000 when it happens, yup.
+      [ REMOVED April 18 - was actually 'killing' use of NETROM ]
+
+  3) From Michael Ford (WZ0C), tested by him and Charles Hargrove (N2NOV)
+
+     Encountering an issue where when receiving a large-ish bulletin over the
+     Netrom4 path between two JNOS systems, after every NR4-window-size frames,
+     the transfer would hang until the NR4-ack-timer timed out. It appears to
+     be because the standard piggyback-ack mechanism does not kick in, in the
+     one-way data transfer. Tried reducing the NR4-ack-timer to near zero as
+     a workaround, and while it worked, it didn't seem like a permanent fix.
+
+     For something more workable, I implemented a counter of unacked NR4 rx
+     frames, and whenever the counter reaches 4, it sends an ack. I have the
+     NR4 window set to 10. Acking after every few packets is more efficient
+     than after every one, doesn't impact the sender, and prevents timeout.
+
+     I did some short research into more formal ack'ing algorithms but chose to
+     go with a quick implementation rather than something more sophisticated.
+
+     It may be worth making the "4" configurable.
+      (note to myself, not done yet)
+
+     WARNING - netrom structure changes - mass recompile mandatory !
+
+     files modified by this patch : nr4timer.c nr4subr.c nr4.h nr4.c
+      (the original ackissue.diff I got from WZ0C is also in the rsync area)
+
+ END of 'differences between 2.0o.2 and 2.0o - April 5, 2023 ...
+
+
+ differences between 2.0o and 2.0m.5Gz - March 3, 2023
+ -----------------------------------------------------
+
+  1) JNOS 2.0 now handles incoming IPV6 traffic (ping and telnet for now)
+
+   Please refer to the document README.ipv6, included in this rsync,
+   for more complete information on what is currently available, and
+   how to use it. This is just the start, there's lots left to do.
+
+   One thing to point out ; even if you have NO interest in using IPV6, the
+   front end processing for IP traffic is much better in this JNOS version.
+
+   So unless you specifically configure the IPV6 iface, the default action
+   is to discard all incoming IPV6 traffic right at the front door. It goes
+   no where near the deeper IP code. This version also does basic screening
+   for garbage IP traffic, which further minimizes any risk of crap getting
+   deep into the IP code - previous versions of JNOS are actually at risk.
+
+  All of the development code has been merged into this latest release,
+  so my development rsync area is technically empty for the time being.
+
+  2) How to use the NinoTNC with JNOS (courtesy of Mark Phillips)
+
+       attach asy ttyACM0 - ax25 2M 2048 256 57600 f16
+
+     And another shout out to Teensy RPR 'modem' - just a standard attach asy
+
+  3) An important fix to convers server code, to better handle null link
+     pointers and/or bad session names, hoping it solves some crashes.
+
+  4) The JNOS smtp server is now MIME aware when delivering mail to the
+     local mail areas, add the following define to your config.h if you
+     wish to try it out :
+
+       #define KLM_MAILIT_MIMEAWARE
+
+   IF you choose to enable this feature, any MIME content is now processed,
+   attachments are saved to user paths taken from ftpusers file, any base64
+   encoded content is decoded, so when a user checks their mail, all they
+   should see is text/plain and text/html, the rest will be references to
+   any saved attachments. The text/hmtl probably should go elsewhere, but
+   for now, this is how it all works. It will evolve as time permits.
+
+   Warning - this alters the BODY (not the headers) of how the incoming mail
+   will appear to the user. If you plan on forwarding your local mail areas
+   to other systems, any referred attachments will obviously not make it to
+   the remote systems you forward with - I hope that makes sense.
+
+   A couple of sysops have already told me they are happy with that :]
+
+   I will add another option for those that do NOT want the mail areas to
+   be processed by smtp, and would rather just have a mime decode version
+   of the RM (read message) and V (verbose message) commands.
+
+   Having said that, another thing to consider is if you use an email client,
+   like thunderbird, then having the SMTP processing MIME will not be great,
+   since you will no longer be able to directly access the attachments.
+
+   This is most certainly a work in progress, but it seems to work.
+
+  5) For the BBS user, JNOS can now save sent mail to their own area, just
+     add the following define to your config.h if you wish to try it out.
+
+       #define J2_FILESENTMSGS
+
+   PENDING ISSUE : if you list your messages, the TO field is not correct, for
+   some reason smtpserv is supposed to reindex when adding the new mail entry,
+   but it does not seem to be happening, yet if you manually 'index' your own
+   mailbox at the JNOS console, it fixes the listing - I am investigating.
+
+  6) Added a lower case BID kludge for N2NOV (Charles), regarding how SID
+     is being handle (case sensitivity) with certain forwarding systems.
+
+   Don't be too eager to put it in, but if you feel you need to ? then
+   add the following define into your config.h :
+
+     #define LOWER_CASE_BID_KLUDGE
+
+   This has been an ongoing issue for a long time, where there are cases
+   of incoming 'sB' proposals where we need force lower casing of the BID,
+   to avoid duplicate messages, so this code 'helps to deal with it' :|
+
+  7) Enhancments to the JNOS snmp server
+
+   Added 2 more MIBS for sysLocation and sysContact.
+
+   JNOS should now send a proper NoSuchName (NoSuchObject) response for any
+   queries for MIBS that do not exist in the JNOS implementation, replacing
+   the previous behaviour of always responding with sysName.0 (hostname) if
+   a requested MIB could not be found or wasn't supported.
+
+   NOTE : snmpwalk only works for ifName and ifDesc (nothing else) ...
+
+   The usage (help) dialogue for the snmp command is now read from file,
+   using my recent getusage() functions - /jnos/usage/snmp.txt for most
+   configurations, you can find this file under usage subdirectory from
+   your rsync session. Here is the new syntax for snmp commands :
+
+     JNOS 2.0 - SNMP Configuration
+
+      snmp ifaces     list all ports in numerical index form
+
+      snmp ro community [ipaddr pattern]*
+
+       NOTE : if you do NOT specify an ipaddr pattern, then ANYONE is allowed
+
+      snmp sysLocation [any text]
+
+      snmp sysContact [any text]
+
+   The new MIBS were originally requested by Mark Phillips :]
+
+  8) Enhancements to the JNOS httpvnc (web based bbs) service
+
+   Reminder : make sure you have /jnos/spool/httpvnc.html in place, since
+   recent versions of httpvnc service require this file. IF you don't have
+   it, then you can find this file under the spool directory from your rsync
+   session. This file is customizable, so now you can give your web access
+   some personality, and contact information, and such ...
+
+   The 'httpvnc' service on JNOS has been available already for quite a few
+   years, aside from some cosmetics, and reduction of JNOS log entries, and
+   a compiler warning, the biggest change is ; I want to move away from the
+   standard user password, and instead use a security token, similar to how
+   it is done by organizations like github ?
+
+   If I am going to allow BBS access via a web browser and from the internet,
+   then the security needs to be higher then it ever has been before. So the
+   only thing you will notice with this latest update is the Password field
+   has been changed to Token field, and it's longer as well, 16 characters.
+
+   In previous versions, the password is taken from ftpusers, same password as
+   for other command line and telnet access, and if one considers how insecure
+   most of those are, a machine generated token is a better approach. What this
+   means is any of your users (including yourself) wanting web access to your
+   JNOS BBS will have to be given a token to use instead of their password.
+
+   Since I have yet to develop the Token code, this latest implementation
+   expects the user to input a Token of the following format :
+
+     Jst_XXXXXXXX
+
+   where XXXXXXXX is the password from the /jnos/ftpusers file
+   (Jst stands for JNOS security token, the ftpusers hack is temporary)
+
+   The average internet surfer will not know to include 'Jst_' in front of
+   the Callsign's regular password. This buys me some time to get it done
+   the proper way, and allows me to showcase the new setup.
+
+   In the meantime, I need to figure out how to store and manage tokens
+   for each callsign (user), including expiry, revocation, and so on.
+
+   The tfn[20] member of HTTPVNCSESS structure has been changed to a pointer,
+   so the code now needs to allocate memory for the session file name. I did
+   this initially because the compiler complained, but it should also negate
+   the possibility of any buffer overflows. Note, this version of code does
+   not free it up when done, not a huge deal at this point, next version.
+
+   The 3 check box options have been replaced with actual buttons, so now
+   you just have to click on a button, instead of previously having to check
+   box the operation you wanted, followed by the enter key. This of course
+   refers to the CTRL-A (abort), CTRL-T (escape), and Clear Session File.
+
+   I encourage you to use Apache with the mod_proxy module to fully secure
+   your JNOS httpvnc traffic, you can search for 'apache' further down this
+   document for more information on how to do this. It works very well ...
+
+  9) Multiple tun ifaces
+   
+   Thanks to Mark Herson (N2MH) for asking for this - for his MESH stuff :]
+
+   This is only available with linux kernel 2.4 or higher, with the older
+   kernel the tun device name is still hardcoded to tun0. Suppose I could
+   fix that as well - but I would think nobody is using older kernels any
+   more, so why bother ? Okay, well I might fix that up later, we'll see.
+
+   The only thing you need to pay attention to is the DEVICE index in the
+   attach command, it is important to increment for each additional tun
+   interface, for instance :
+
+     attach tun tun0 1500 0
+     attach tun tun1 1500 1
+
+   or if you have created them at boot time ?
+
+     attach tun tun0 1500 0 tun0
+     attach tun tun1 1500 1 tun4
+
+ 10) JNOS can now attach multiple agwpe / direwolf modems
+      (plus additional kiss ports, if supported by the software)
+
+   Make sure to add the following define to your config.h, if you
+   want to use the agwpe driver for agwpe and/or direwolf modems :
+
+     #define AGWPE
+
+   The autoexec.nos entries 'could be' as follows :
+
+    attach agwpe vhf 192.168.1.105 8000
+    attach kiss vhf_high 1 vhf
+
+    attach agwpe uhf 10.8.10.101 8000
+    attach kiss uhf_low 1 uhf
+
+   10Feb2023 correction - we're not sure now if direwolf or agwpe
+   modem softwares actually implement the use of additional kiss
+   ports like is done in QtSoundModem, but the JNOS agwpe driver
+   will stay as is (just in case), does no harm leaving it in.
+
+ 11) QtSoundModem support + multiple additional kiss ports
+
+   The winrpr driver will work with QtSoundModem, so make sure to
+   add the following define in your config.h if you want to use :
+
+     #define WINRPR
+
+   The autoexec.nos entries 'could be' as follows :
+
+     attach winrpr QtK 192.168.100.105 8105
+
+     attach kiss QtK 1 QtK2
+     attach kiss QtK 2 QtK3
+     attach kiss QtK 3 QtK4 
+
+   29Jan2023, I have confirmed on the bench this is working fine, BUT
+   please do let me know if you are not seeing packets coming into the
+   appropriate interfaces, tested with QtTermTCP and QtSoundModem for
+   my remote test box.
+
+ 12) The WIDTH of the Message Text column in the APRS Message Center should
+     now be 'fixed' - previously it wasn't wide enough, and message content
+     would wrap around. Also, confirming length of the text input field for
+     the "Send a Message" dialogue is 63 characters. Thanks Jean (VE2PKT)
+
+ END of 'differences between 2.0o and 2.0m.5Gx - March 3, 2023' ...
+
+
+ July 18, 2022
+ -------------
+
+ Changes to RSYNC site - [jnos2] module is deprecated.
+
+ It is replaced with two new modules, [official] and [development]
+
+   a) Official version
+      ----------------
+
+   The official version is the last stable release.
+
+     rsync -av www.langelaar.net::official .
+
+   Simply create a new directory, then change into it, then run the above
+   rsync command as shown, then compile the source code as follows :
+
+     ./configure
+     make
+
+   The idea of the ./configure script is to make sure you have necessary
+   operating system libraries for the compile and link to succeed. It is
+   not flawless, so if you run into issues, do contact me - thank you.
+
+   b) Development version
+      -------------------
+
+   The development version is the latest code I feel comfortable releasing
+   for test purposes, so the idea is if you want to try out the development
+   version, you rsync the development code on top of your official source.
+
+     rsync -av www.langelaar.net::development .
+
+   Make sure to read the README file. It will contain important information
+   on how to compile, and what configuration changes are needed, if any ...
+
+   The README file is also available online at the following URL :
+
+     https://www.langelaar.net/jnos2/documents/development.txt
+
+ The development code used to be mixed in with the official release, usually
+ in the form of various subdirectories, which was not a great idea - leaving
+ lots of room for mistakes, and it was (perhaps always was) very confusing.
+
+ The bottom line is that the official area needs to stay clean.
+
+ The same goes for the official (changes.txt) release history. This too has
+ gotten out of control, and needs to stay clean - so any development notes
+ will now go into the README file under the development rsync area.
+
+ The latest official release is still at JNOS 2.0m.5Gz
+
+
+ important configuration check added - January 3, 2022
+ -----------------------------------------------------
+
+ - Modified configure script to not allow the following define in config.h :
+
+     #define SPEED_UP_TICK
+
+   This was a badly thought out idea, and breaks timers and stuff, don't use it.
+    (not in present form anyways, was experimental from 2013, might revisit)
+
+   Modified makefile, simply to match the configure script version.
+
+
+ changes to Web Based User BBS interface - November 25, 2021
+ -----------------------------------------------------------
+
+ - This now works with apache (mod_proxy module) to give you full protection
+   of https during your web sessions with the JNOS httpvnc server. Download
+   the latest 'bbs10000.c' source file from the official rsync site, then :
+
+   Add the following directorive to your config.h :
+
+     #define APACHE_MOD_PROXY_BBS10000
+
+   Then recompile as follows :
+
+     rm bbs10000.o ; make
+
+   For the apache server side, add the following to your httpd.conf :
+
+     ProxyPass "/jnosbbs" "http://192.168.4.201:10000"
+     ProxyPassReverse "/jnosbbs" "http://192.168.4.201:10000"
+
+   You would place these inside of your *:443 virtual host definition, then
+   restart your apache server - that's what I do on my systems anyways ...
+
+   Then I can securely access my httpvnc sessions as follows :
+
+     https://www.langelaar.net/jnosbbs
+
+ - Comments and Caveats
+
+   Do NOT run multiple web sessions (for different users) to your httpvnc site
+   if any of them are on the same IP address as the others (ie, you might have
+   a group of users all behind the same firewall router). What happens is that
+   after the first user logs in, anyone else who tries to do so will actually
+   see (without login) the initial users interactions. That's because JNOS at
+   present can only depend on IP address to distinguish sessions. That is not
+   a huge problem IMHO - as long as you are aware of it.
+
+   The above applies regardless of whether you use mod_proxy or not !
+
+   For mod_proxy, JNOS uses the HTTP header 'X-Forwarded-For' to track the
+   actual IP address of connecting web clients.
+
+   Do NOT use the perl tcp proxy server I mentioned before, since there is
+   no way for it to provide a unique IP address, unless you happen to find
+   one that inserts the HTTP header I mentioned above.
+
+   IF you compile the mod_proxy feature, then httpvnc will only work through
+   apache, you can't have mod_proxy and regular working at the same time, so
+   it's either mod_proxy for all access or regular for all access, not both.
+
+   Why ? Because I have not figured out how to Rewrite Headers in httpd.conf
+   yet, so the code modification earlier does that for me. Once I figure it
+   out, then we can ditch the #define mentioned earlier, and run both modes
+   of apache (https) and usual (http) direct to JNOS at the same time :]
+ 
+
+ differences between 2.0m.5Gz and 2.0m.5Gx - September 12, 2021
+ --------------------------------------------------------------
+
+ September 12
+
+ - The VARA code now has an Access Mode, successfully able to B2F forward
+   with a Winlink Express client running in VARA HF P2P, and the PPP over
+   VARA is working 95% as well, latency is not great, but it does work.
+
+   I've had some discussions with the author of VARA (Jose) and now have a
+   much better understanding of why this is. At the end of the day, PPP over
+   VARA is not great, and certainly not the most efficient way to use VARA.
+
+   I have put together 3 demos (with video), so you can actually see this stuff
+   in action, instead of just hearing me talk about it. The links to the videos
+   are on the official JNOS 2.0 page, but here they are too :
+
+    "jnos forwarding with winlink express over vara"
+       https://www.langelaar.net/jnos2/vara/demo.html   
+
+    "jnos to jnos IP Bridge using PPP over vara"
+       https://www.langelaar.net/jnos2/vara/demoIPbridge.html
+
+    "jnos ftp session over IP Bridge using PPP over vara"
+       https://www.langelaar.net/jnos2/vara/demoFTP.html
+
+   The PPP was a good and informative experiment, but I need to rethink it ...
+
+   files updated : forward.c, ppp.c, vara.c, version.c, vara.nos
+
+   Please email if you encounter ANY problems, thank you
+    (maiko@pcs.mb.ca)
+
+   For the new access mode (forwarding), please refer to the j2addendum.txt
+   documention, for any of the IP Bridge stuff, I have updated the document
+   called "VARA Software Modem Support" to reflect changes since January.
+
+   Note : The IP Bridge (PPP) feature now requires this extra command :
+
+     varacmd ipbridge
+
+
+ final fixes and additions to 2.0m.5Gx as of July 15, 2021
+ ---------------------------------------------------------
+
+ July 15
+
+  - by request, the ability to run a script of commands on a remote system,
+    and log the results to file. Instead of reinventing the wheel, this new
+    feature has been made part of the forward.bbs mechanism - so any 'area'
+    defined in 'spool/forward.bbs' which ends with '_script' is treated as
+    a remote command and log sequence, with no forwarding actually done.
+
+    For example, I want to collect NETROM routing info from a couple of my
+    forwarding partners, N2NOV runs JNOS and K5DAT runs BPQ. In JNOS a bbs
+    user uses NR to display netrom routing, in BPQ they would use RO. I've
+    got the following 2 script entries defined in my forward.bbs file :
+
+     -------
+     n2nov_script
+     ax25 newyork n2nov-4
+     .nr
+     +>
+     *5
+     -------
+     k5dat_script
+     net k5dat-7
+     .ro
+     +>
+     *10
+     -------
+
+   This is just like any forwarding sequence, where I can just do a :
+
+     mbox ki N2nov_script
+
+   and/or
+
+     mbox ki K5dat_script
+
+   Note the capitalized first letter of 'area', since there will never be
+   any mail to deliver with these scripts, or you could always add a poll
+   option to the 'area' line and not worry about the capitalization.
+
+   Also note the lack of any message areas in the script definitions, it's
+   all pure commands, and waiting for results. Hopefully people find it to
+   be somewhat useful, we can certaintly build on it, feedback is welcome.
+
+   The output file generated each time is 'area'.dat, for example :
+
+     n2nov_script.dat, k5data_script.dat
+
+  - the previous newfiltercode subdirectory is gone, it's all part of the
+    main rsync now, for any of you wondering what happened to it, thanks.
+
+ July 2
+
+  - Removed a line of code I put in from 2015, where I was trying to support
+    the '!' or 'A' FSR character in any FS string sent by a remote BBS during
+    a forward session. It was a half hazardly attempt, resulting in possible
+    corruption of index files for the areas involved in the 'Restart Data'
+    situation. Typically one had to 'index <area>' to get things working
+    again. So now, all JNOS does is extract the offset, nothing more.
+
+    I need (want) to get this done and over with, it's been left for way too
+    long, in the meantime I strongly encourage everyone to update please.
+
+    NOTE : the update only exists in the rsync newfiltercode subdirectory,
+           which will get moved into the main release at a later date.
+
+ June 25
+
+  - Fixed a problem where if a user for example tries to 'sb all@ww' at the
+    JNOS bbs prompt, and you have user specific rules defined in the rewrite
+    file, the posts will be rewritten to the first user specific rule found.
+
+    This is not good at all, but I've fixed the problem. There is an updated
+    mailutil.c source file in the rsync newfiltercode subdirectory.
+
+ June 18
+
+  - By request, NEW capability in the rewrite file. One can now have entries
+    targeting (such a bad word) specific users / stations. In other words one
+    can now add entries that apply to only a FROM <pattern>, for example :
+
+       *@ww:ve4klm  hold
+       *@ww ww
+
+    This allows ALL incoming @ww to the ww area, but any @ww coming from me
+    is actually sent to the hold area instead. Or you could just refuse any
+    @ww coming from me, for example :
+
+       *@ww:ve4klm  refuse
+       *@ww ww
+
+    In the case of refuse, it is rejected right when the proposal appears.
+
+    What is new is the addition of the ':' tag, followed by a PATTERN to
+    match in the FROM field of the incoming message (no spaces). Yes, it
+    is a pattern, not a direct callsign match, sort of a wildcard ...
+
+  You can get the test code from the rsync area as follows :
+
+     rsync -av www.langelaar.net::jnos2/newfiltercode
+
+ June 16
+
+  - nntpserv.c now contains the latest stability fixes
+
+    AND to appease the NNTP police out there ...
+
+    JNOS is getting LOTS of flack due to a recent NNTP incident where internet
+    grade foul language and some very inappropriate content was channeled into
+    the packet network, so I have modified the code such that JNOS will only
+    allow connections to NNTP servers on the 44 network.
+
+    This is supposedly 'to protect sysops from themselves' - not my words and
+    not necessarily my choice, but I am really tired of this crap, maybe more
+    so the 'software wars type exchanges' that ensued because of it ...
+
+    At the end of the day - we ALL make mistakes, enough said !
+
+ June 15
+
+  - Yesterday, Bob Bruninga WB4APR was kind enough to add an entry for
+    the NOSaprs module of JNOS 2.0 to his 'tocall' list maintained at :
+
+      http://aprs.org/aprs11/tocalls.txt
+
+    NOSaprs is now 'assigned' APN2XX, with APZ200 noted as being used by
+    older versions of JNOS. It's been quite some time since NOSaprs was
+    introduced, so it's not really experimental anymore.
+
+    Thank you Janusz HF1L (ex.SP1LOP) for suggesting this change.
+
+    The APZ200 in aprs.h is now set to APN20H
+
+    IF you have routing for 'apz200', make sure you change the apz200 to
+    the new 'apn20h' AFTER you have the new source in place. YES, if you
+    use NOSaprs to TX, use 'ax25 route' to set the APRS path, example :
+
+      # 30Dec2020, So K4KPN-10 will catch it and pass it on further
+      ax25 route add apz200 rp0 WIDE1-1
+
+ June 7
+
+  - stability fixes to NNTPSERV, test code -> nntpserv_stability_fix.c
+     (copy to nntpserv.c, then 'make', feel free to send me JNOS logs)
+
+    NOTE : only applies if you have #define NNTPS in your config.h
+
+ May 27
+
+  - the ax25 heard save/load functionality now includes the ax25 destinations
+    and the ax25 digipeated stations heard lists. The save file from the last
+    mod can be safely loaded with this mod - you simply won't see the 2 lists
+    mentioned above of course. Files changed are axheard.c and axhsort.c
+
+    You 'could' add these commands to the very end of your autoexec.nos :
+
+       # 21May2021, Load the last saved heard lists
+       ax25 heard load /tmp/newsaveit.txt
+
+       # 21May2021, save heard lists every 15 minutes from this moment on
+       at now+0015 "ax25 heard save /tmp/newsaveit.txt+"
+
+  - warning, the use of '?' in rewrite will most probably crash JNOS, not sure
+    why anyone would use it there. IF you do, please educate me - thank you.
+
+ May 20
+
+  - stability fix to the AT functions in at.c - fixed potential for memory
+    corruption in the AT entry list, which can trigger JNOS locking up and
+    going into an endless loop, also added loop protection (experimental),
+    to prevent JNOS from locking up - it really should not happen now ...
+
+  - some BPQ systems are presenting B2F in the SID, which will cause problems,
+    since I only wrote the B2F code for Winlink (mostly CMS) interactions, so
+    what I have done is modified mboxmail.c to downgrade these connections to
+    use B1F instead, until such time I get it properly working and tested.
+
+  - fixed ax25cmd.c, the compile will fail if '#undef BACKUP_AXHEARD'.
+
+ May 10
+
+  - modified multipsk software modem driver as I did agwpe and winrpr below.
+
+ May 7
+
+  - fixed 'endless sockets' bug in agwpe and winrpr software modem drivers.
+
+    added 'backing off' of logged failed software modem connects for awgpe.
+
+  - brand new 'date' command at JNOS console, updated reportRPR.nos script.
+     (previous version of script used 'sh date' which creates zombies)
+
+
+ differences between 2.0m.5Gx and 2.0m.5G - April 18, 2021
+ ---------------------------------------------------------
+
+ 1) ax25 heard has been 'revamped', new 'heard via digipeater' feature,
+    so that you can actually see stations not directly heard, I created
+    this due to my crazy obsession with Robust Packet lately and seeing
+    all the APRS frames coming in on 30 meters, many via K4KPN-10, nice
+    to know who else you can QSO with (indirectly), really liking this.
+
+    the save/load functionality improved, you can specify save and load
+    file now, and times are FINALLY accurate on load, this took a lot of
+    effort, but worth it in the end I think. I have NOT included saving
+    of the latest digipeater heard list (yet), that will be next time.
+
+   WARNING : the heard file from previous versions of JNOS will NOT work
+             with this version, unless you modify the file, add a second
+             time stamp to the first line of the file, indicating uptime
+             of the previous JNOS at the time you saved the heard file.
+
+    To be honest ? I hated the introduction of the 'show' subcommand, so
+    the original 'ax25 h <iface>' is back and will stay that way ...
+
+    command help dialogue now taken from a NEW usage/ax25/heard.txt file
+     (create new /jnos/usage/ax25 directory, copy heard.txt over to it)
+
+    there is a sample JNOS script 'reportRPR.nos' if you are interested :]
+     (it has a problem though, it creates one defunct processes per run, so
+       you might not want to use it a lot - I need to fix JNOS shell command)
+
+    I have NOT updated j2addendum.txt (yet)
+
+ 2) The VARA IP Bride code now included, no need to extract the tar file anymore
+
+      #define EA5HVK_VARA
+      #define PPP
+      #define REMOTE_RTS_PTT    (an option if you have no VOX control)
+
+    Going to try again to write VARA for access mode, because quite honestly
+    so far it seems to be the only way it's being used, very integrated into
+    the winlink system as well by the looks of it ...
+
+
+ differences between 2.0m.5G and 2.0m.4 - April 1, 2021
+ ------------------------------------------------------
+
+ 1) Basic DNS malformed packet protection, better error checks and logging,
+    bumped up stack size of DNS procs, this fix alone will add significant
+    stability to people reporting JNOS crashing (from DNS attacks).
+
+ 2) Got a few reports of longer hex values showing up when running the console
+    commands like 'ax25 status', 'tcp status', 'netrom status', however when it
+    was required to 'kick' or 'reset' by hex value, JNOS would report the call
+    back as not valid, preventing people from being able to do such things.
+
+    The fix was fairly easy, replacing htoi() calls with htol() instead.
+
+ 3) Robust Packet Interface (KISS over TCP/IP) to WinRPR Software Modem
+
+ 4) VARA IP Bridge Interface (TCP/IP) to EA5HVK VARA Software Modem
+
+   As documented, you need to extract the source from varadev.tar. This
+   is because the current vara code hardcodes some things in PPP source
+   which I have not finalized at release time. Applying the VARA source
+   will break any serial PPP configurations you may have running.
+
+   Chances are nobody is using PPP with JNOS anymore, but I need to be sure :]
+
+ 5) This update sees the addition of DUPE protection for concurrent forwarding
+    sessions from multiple remote hosts, where messages having the same BID are
+    coming in from multiple sources, seconds of each other, even within minutes
+    of each other in some cases. It should be noted that up till now, JNOS has
+    always been vunerable to this, resulting in posting of duplicate messages,
+    which in turn get forwarded to other systems, which is just not good.
+
+    The solution up till now has been to stagger forwards with remote partners,
+    such that only one partner is forwarding at any particular time. With this
+    new feature, we can loosen things up a bit more, and not worry about it.
+
+    Excess messages get deferred (not refused), since we might need them later.
+
+ 6) The BID for messages from 'our host' is now in BASE36 format, giving us
+    a much bigger range of several million numbers, instead of the original
+    range of 99999 and then start over again.
+
+    If you use an email client (like thunderbird) to send messages to your
+    JNOS system, you'll notice this version no longer uses a portion of the
+    long message-id present in the email header to generate the BID, rather
+    it will just create another BASE36 BID from JNOS sequence number pool.
+
+    I figure it is perfectly fine to do this now, since BASE36 extends the
+    range of the BID to several million. The original message-id is still
+    preserved in the message header anyways, so nothing is lost here.
+
+ 7) Protection from getting 2 UA frames after we send a SABM frame, resulting
+    in a terribly vicious loop, like a DOS attack, rare scenario encountered,
+    some time ago, where the remote software (based on linux ax25 stack) went
+    nuts on some of us. Possible ax25 libs were updated, but the software on
+    the other end not compiled in a long time and running old libs ? We will
+    never know to be honest, but the situation was very real, yup.
+
+ 8) Very basic implementation of Multi Factor Authentication (MFA) - why not ?
+     (note this is very much a prototype, and needs to evolve over time)
+
+ 9) Important changes to the JNOS httpvnc (web based user BBS) service
+
+    Now using POST instead of GET in the form submission, so you won't be
+    seeing any user credentials and commands in the URL anywmore, it's all
+    hidden in the message body now. The original version had user callsign
+    and password exposed in the URL which was just bad, but my knowledge of
+    HTTP programming was quite limited at the time I wrote the original
+    prototype, so really it is a huge security improvment.
+
+    NOTE : Data is still cleartext over your network since this is HTTP ...
+
+    This version also quickly shuts down those annoying and bandwidth consuming
+    favicon http requests that firefox likes to send out in huge volumes, yeah.
+
+    Added a CTRL-A checkbox so a user can abort any SEND (SP, SR, SB) commands.
+
+    Made adjustments to timeout values in the code, removed some pwait() calls
+    which didn't seem necessary anymore, and now setting the 'Server:' field in
+    the HTTP response header to reflect the more recent JNOS version 2.0m ...
+
+    Cleaned up debugging and general logging to the JNOS logfile.
+
+ 10) Important changes to the SID Capture feature.
+
+    The original prototype was written more to help me debug stuff at the time,
+    but I figured it might come in handy for others, but the last enhancements
+    actually were not really great. In the interest of getting more information
+    about the hosts connecting to us, the focus on the connecting callsign was
+    lost, the information displayed was confusing, you had no idea who the call
+    was in many cases, and it turns out in the end that I introduced bugs into
+    the code, so the information at times was even wrong here and there.
+
+    This new version has a much better user friendly layout, being more in line
+    with what I originally wanted to do way back then. Now you get the callsign,
+    the time of connect, the full SID sent to us, and connection details, as in
+    was this a netrom connect, a radio port, a wormhole, telnet connect, etc ?
+
+    For example, on the JNOS console of my development system :
+
+      jnos> mbox sid > /tmp/sid8.txt
+
+    Then from the linux prompt, I can retrieve the content as follows :
+
+      root@slackware:/jnos/src/dev_2.0m.4# more /tmp/sid8.txt 
+
+         [FBB-7.0.10-AB1FHMRX$]
+          gb7cip 20:06:02  GB7CIP @ GB7CIP
+         [JNOS-2.0.6.URO.C-B1FHIM$]
+          ve3cgh 11:37:17  ve3cgh.ampr.org
+         [TNOS-3.00-FHIMW$]
+          ve2har 18:57:57  VE2HAR-8 @ VE2HAR-9
+         [FBB-7.05G-AB1FHM$]
+          ve2pkt 17:47:34  VE2PKT @ VE2PKT
+         [OPENBCM-1.08-5-G2F4A-AB1D1FHMRW$]
+          i0ojj  20:15:10  host-79-52-228-200.retail.telecomitalia.it
+         [JNOS-2.0M-B1FHIM$]
+          ve3tok 20:24:55  port.ve3mch.ampr.org
+         [JNOS-2.0M.5C-B1FHIM$]
+          n2nov  20:25:21  N2NOV-4 on port newyork
+          ve3cgr 17:58:20  jnos.ve3cgr.ampr.org
+          aa6hf  20:24:03  AA6HF-8 on port cal
+          i0ojj  20:13:19  i0ojj.ampr.org
+         [BPQ-6.0.20.10-B1FIHJM$]
+          va3tok 20:14:05  linux.ve3mch.ampr.org
+         [JNOS-2.0M.5B-B1FHIM$]
+          n2nov  18:09:25  1d N2NOV-4 on port newyork
+         [FBB-7.07-AB1FHM$]
+          ve3tok 20:11:25  linux.ve3mch.ampr.org
+         [WL2K-5.0-B2FWIHJM$]
+          wl2k   03:39:54  1d winlink-lb-628697408.us-east-1.elb.amazonaws.com
+
+ 11) Security - make sure you configure users in ftpusers with BBS permissions
+     only for stations you have authorized incoming forwarding with. This will
+     protect against rogue or ignorant incoming connects from any stations who
+     could then proceed to send a SID, possibly followed by illegal 3rd party
+     forwarding or forwarding of malicious messages.
+
+     for BBS permissions OR 0x02000 - so 0x0407f in ftpusers becomes 0x0607f
+
+     Up till now, JNOS has always allowed this, but now JNOS will send a terse
+     message to the 'offending' station first, instead of the SID, disrupting
+     the message flow - it might require some refinement, let me know please.
+
+     These events are also logged to the JNOS logfile.
+
+     IF this feature causes you grief, then disable it in config.h with :
+
+        #define J2_DONT_ENFORCE_BBS_USER
+
+ 12) Added EHLO support to SMTP server. I discovered this by accident when my
+     android email app refused to talk to my JNOS, so tcpdump showed me exactly
+     the problem, easy enough to add the command. Quite honestly, I thought it
+     was there already, oops :|
+
+ 13) Instead of hardcoding NETROM parameters, I know several folks have had it
+     done, please consider using the following NEW commands in autoexec.nos :
+
+       netrom obsoinit <value>     default is 6, for NEDA use 5
+       netrom obsominbc <value>    default is 5, for NEDA use 3
+
+     Same with acktime, use the EXISTING command instead of hardcoding it :
+
+       netrom acktime <value>      default is 3000, for NEDA (?)
+
+ 14) Couple of 'stability' mods to netrom code.
+
+ 15) Better error logging during saving of the BID to the history file.
+
+ 16) Removed first column (gateway ip address) from the 'genencaptxt' file.
+      (now it matches the exact same format as a real encap.txt)
+
+ 17) If you are running two systems with the same Call Sign
+
+    Please consider staggering your sequence numbers, since the sequence number
+    pool is now into the several million range, not constrained to the old 1 to
+    99999 and back. For example, in my /jnos/spool/mqueue/sequence.seq, I reset
+    the value to 16801420, which starts my base36 bid at ANNNN, way ahead.
+
+    If anyone sees a flaw in this, please talk to me :]
+
+    Not so sure one should be running multi BBS with same callsigns, but ...
+
+ 18) Some tweaks to APRS code, for instance making sure to remove trailing 0xc0
+     characters from the end of APRS data coming in via a WinRPR interface, and
+     also breaking out callsign list management routines - which are no longer
+     specific to the APRS aspect of JNOS, also used for IP access and Winlink
+     call lists, so they got moved to the new j2KLMlists.[ch] source files.
+
+ 19) Fixed some more compiler and linker warnings, some dependant on how one
+     modified their config.h file - originally these never would have showed
+     for the more standard configurations (if there is such a thing). I also
+     added some TNODE 'mods' from Brian (N1URO).
+
+ 20) Important for ARM processors, the makefile now FORCES signed char, the
+     reason being the linux version of JNOS always assumed signed char, but
+     this is a big problem for ARM and Raspberry PI based hardware, which
+     actually assumes unsigned char intead - more efficient apparently.
+
+     So BEFORE this got enforced, PI users were complaining about all sorts
+     of strange behavior with JNOS and/or outright continuous crashing ...
+
+ 21) How to update your JNOS 2.0m.4 system (or just compile fresh)
+
+    WARNING : only apply this update on 2.0m.4 systems, nothing earlier !
+
+    Run rsync on your source tree like you usually would, for example :
+
+      cd <your JNOS source>
+
+      rsync -av www.langelaar.net::jnos2 .
+
+    Note the following new possibilities for your config.h file :
+
+      #define WINRPR    /* kiss over tcp/ip interface to WinRPR */
+
+      #define J2MFA   /* prototoype multi factor authentication */ 
+
+      #define TNODE   /* Brian's TNODE mods */
+
+      #define J2_DONT_ENFORCE_BBS_USER   /* use only if it gives you grief */
+
+      #define EA5HVK_VARA  /* ip bridge tcp/ip interface for VARA */
+
+    Hopefully I have not missed anything (sorry), then compile as usual :
+
+      make clean
+      ./configure
+      make
+
+ 22) No more patch files, all moved into a patches subdirectory again ...
+     (the README files in some of them might come in handy, who knows)
+
+
+ no more patching required AND check for RDATECLI in config.h - August 21, 2020
+ ------------------------------------------------------------------------------
+
+ 1) The rsync area is now @ version 2.0m.4 - no more patching required !
+
+    All 4 patch files since 2.0m have been moved to a new patches subdirectory,
+    and simply there for historic reasons now, NO need to extract them anymore.
+
+    Keep this in mind when you go over the 'differences' further below.
+
+    One important item that I forgot to add to the configure script, was to
+    check if the existing config.h has #define RDATECLI and if so, warn the
+    user they need to #undef RDATECLI instead - the reason for this is that
+    the stime() function no longer exists in the more recent gcc versions.
+
+    As a result, you may get an unresolved reference to stime() during the
+    linkage portion of the compile. It isn't a simple change, and since we
+    already have 'ntpd' on the linux side, there is no point in supporting
+    the JNOS 'rdate' command anymore. So please check your config.h file.
+
+
+ differences between 2.0m.4 and 2.0m.3 - August 3, 2020
+ ------------------------------------------------------
+
+ 1) This is a patch to put on top of JNOS 2.0m.3 and strictly deals with
+    a couple of compiler and linker problems when using gcc version 10.
+
+    Thanks to Kayne (N9SEO) for reporting this on Manjaro linux.
+
+ 2) How to update your existing version 2.0m.3 installation :
+
+     #
+     # you don't have to patch anymore as of August 20, 2020
+     # WARNING : your existing source MUST be at version 2.0m.3 !
+     #
+
+     cd < your jnos source directory >
+
+     rsync -av www.langelaar.net::jnos2 .
+
+     #
+     # you don't have to patch anymore as of August 20, 2020
+     # tar xvzf jnos_2.0m.4_patch.tar.gz
+     #
+
+     # BUT check your config.h - make sure you have #undef RDATECLI
+
+     make clean
+     ./configure
+     make
+
+
+ cleaning up the JNOS 2.0 installer and documentation for it, July 8, 2020
+ --------------------------------------------------------------------------
+
+ 1) removed 'jnosinstaller.c' and the 'installerv2.1' subdirectory from the
+    rsync area, replacing them with a new installerv2.2.tar.gz package.
+
+    The documentation and links have been redone for the updated JNOS installer
+    on the official JNOS 2.0 website, it should be much less hassle to use, and
+    you can once again download it from the installer page as well.
+
+    The installer no longer ships with a generic JNOS binary, it now comes
+    with a dummy JNOS (script) basically telling you to compile your own.
+
+    NOTE : the makefile will still try to compile the jnosinstaller, just
+           ignore that for now, I will remove it on the next JNOS update.
+
+    The installer is very simplistic, perhaps primitive. The whole idea behind
+    it was just to give new JNOS people something to start with, letting them
+    build on the autoexec.nos and such - I hope it is of use to some of you.
+
+
+ differences between 2.0m.3 and 2.0m - July 5, 2020
+ --------------------------------------------------
+
+ 1) JNOS can now download messages for multiple Winlink User Accounts
+
+    All winlink calls are now configured in one command, for example :
+
+      mbox winlinkcalls VE4KLM VE4PKT VE4NOD
+
+    Here, VE4KLM is my JNOS winlink account, and VE4PKT and VE4NOD are
+    the other user accounts for which I want to download messages for.
+
+    Of course the other user accounts are optional and not required.
+
+    You must create a JNOS winlink user account for each user you wish
+    to download messages for - example in my case I would do this :
+
+      ./jnospwmgr -a ve4klm -w
+      ./jnospwmgr -a ve4pkt -w
+      ./jnospwmgr -a ve4nod -w
+
+    Note, I have pluralized the original 'mbox winlinkcall call' command.
+
+ 2) JNOS 2.0 Log Triggers - this is new code which gives JNOS the ability to
+    run commands based on what it sees in the main log file - in real time.
+
+     a) notify me 'instantly' if Ron's system times out during a session
+
+          log trigger add "VE3CGR&timed out&" "mailmsg ve4klm \"ve3cgr timeout\""
+
+        this looks for 2 phrases "VE3CGR" AND "timed out" and invokes the
+        JNOS mailmsg console command to email me saying we've timed out.
+
+        note the use of & for BOTH phrase, it's case sensitive (currently), and
+        also note you can include spaces in a phrase. The command only happens
+        if BOTH phrases match !
+
+     b) run a shell script if any particular words show up in the log
+
+          log trigger add "error|warning|WARNING|" "sh ./notifyme.sh"
+
+       this looks for 3 phrases "error" OR "warning" OR "WARNING" and runs
+       the shell script 'notifyme.sh'. The script will run if ANY single
+       phrases is matched.
+
+    At present you can NOT mix use of the '&' and '|' operators.
+
+    If you have only one phrase, you still need to terminate with an operator,
+    either one will do. The whole matching algorithm needs work, stay tuned. 
+
+    Documentation could be better, but the examples should help for now.
+     (just enter 'log' at JNOS console for usage information)
+
+ 3) Moving away from hard coded usage() functions for JNOS console commands.
+
+    This opens up the door for users to customize the usage dialogue to their
+    own needs, including writing them in different languages. The plan is to
+    also add control codes for paging, color, and so on down the road.
+
+    Note there is a new 'usage' subdirectory in the rsync area, and I will be
+    adding files to it as each release comes up. Just 'cp -r usage /jnos/usage'
+    or copy them to whatever your JNOS root directory happens to be.
+
+ 4) You can now Save and Load the axheard list, to and from file. I felt it was
+    important to keep the new commands within the 'ax25 heard' context, so I've
+    changed the syntax over previous versions of JNOS and it's now this :
+
+     jnos> ax25 heard
+     Usage : ax heard < show | dest > [<iface>]
+             ax heard < save | load >
+
+    The filename is 'AxHeardFile' right now, will make it more flexible later.
+
+    This is very experimental. The time stamp on the load might be off in
+    certain cases. Would it be useful to have a Save and Load per iface ?
+
+ 5) I have enhanced the information available in the SID capture feature.
+
+ 6) The makefile now enforces the compiler option '-fsigned-char' so if
+    you're running a PI or any ARM based system, it should be okay now.
+
+ 7) How to update your existing version 2.0m or later installation :
+
+     #
+     # you don't have to patch anymore as of August 20, 2020
+     # WARNING : your existing source MUST be at version 2.0m or later !
+     #
+
+     cd < your jnos source directory >
+
+     rsync -av www.langelaar.net::jnos2 .
+
+     #
+     # you don't have to patch anymore as of August 20, 2020
+     # tar xvzf jnos_2.0m.3_patch.tar.gz
+     #
+
+     do you have an existing config.h ? maybe compare it to config.h.default ?
+      (perhaps you are missing out on a feature, or not, maybe try these below)
+
+       #define BACKUP_AXHEARD   /* save and load axheard list feature */
+       #define JNOS_LOG_INCOMING_LOCAL_PORTS   /* experimental port logging */
+       #define J2_SID_CAPTURE   /* capturing and logging of SID information */
+
+     time skew warnings are normal, probably means you downloaded something I may
+     have just updated within the last several hours, and depending on time zone.
+
+     make clean
+     ./configure
+     make
+
+     cp -rp jnos jnospwmgr jnosinstaller usage < your jnos runtime directory >
+
+   To back out of this, just repeat above procedure BUT without the 'tar'.
+
+ << end of differences between 2.0m.3 and 2.0m >>
+
+
+ Announcment regarding 2.0n development - May 27, 2020
+ -----------------------------------------------------
+
+ This whole 2.0n and new password management is a bit too much perhaps for the
+ majority of JNOS users out there, and I simply got carried away with the work
+ done on it. There is an actual concern this will scare people off, so time to
+ rethink all of this and stick with the 'traditional approach', starting again
+ with version 2.0m, and leaving the ftpusers and popusers approach 'as is'.
+
+ The idea is to repackage the work done for version 2.0n, making it available
+ as a 'JNOS 2.0 Security Kit' for people to put on top of 2.0m and subsequent
+ versions IF they want more security. I like this idea, so that's the plan.
+
+ The Security Kit will definitely remain in use on any of my JNOS systems.
+
+ I just need some time to re-package the code, so 2.0n.beta is 'no more'.
+
+ Any features and fixes not related to the new password management will
+ be kept of course, and be released sometime soon as version 2.0m.1 ... 
+  (for example, the JNOS log triggers code)
+
+ Thanks to everyone for your support :]
+
+
+ a few changes to 2.0n.beta - May 09, 2020
+ -----------------------------------------
+
+ No more popusers file, added a new option '-m' to jnospwmgr utility.
+  (encrypted, but not hashed as I would like to do, but not today)
+
+ Removed '-#' option for permissions, and '-r' syntax has changed for jnospwmgr utility.
+
+ The '-r' no longer specifies a solitary path, rather, it's what you would have put into your
+ fptusers file originally - in other words the primary 'path permission' or multiple sets of,
+ as briefly indicated in the JNOS user manual. I can't think of any other way to do this at
+ this time, so for example :
+
+  ./jnospwmgr -a ve4klm -r "/jnos/public/ve4klm 0x040ff" -g "ban this guy"
+
+ Also removed any kludge code I put in to deal with FTP issues, that code is no longer needed
+ now that the path permission issues are properly resolved (I hope so), please report issues.
+
+ You should not have to change any user password files, UNLESS, you want to specify multiple
+ path / permissions for any of them, either use the updated jnospwmgr binary or hand edit.
+
+ Lastly, this release contains the JNOS 2.0 Log Triggers code, more documentation is coming
+ on this later, in the meantime, you can refer to this NOS-BBS posting on how to use it :
+
+  http://lists.tapr.org/pipermail/nos-bbs_lists.tapr.org/2020-April/005534.html
+
+ I have updated the gzip tar file '2.0n.beta.update.tar.gz', and the github repository.
+  (8 files in main jnos source directory, 2 files in j2pwmgrV2 directory)
+
+
+ significant change to 2.0n.beta - March 22, 2020
+ ------------------------------------------------
+
+ Replaced the use of MD5() with SHA512() in the main portion of the JNOS Password Management
+ routines. It's literally a drop in replacement. This does not affect MD5AUTHENTICATE and/or
+ WINLINK_SECURE_LOGIN functionality, BUT you will have to import your original ftpusers file
+ again, and recreate any additional users (including winlink) if you had any setup before.
+
+ Yeah sorry, it's been a few 'iterations' I guess :]
+
+ I have updated the gzip tar file '2.0n.beta.update.tar.gz', and the github repository.
+  (4 files in j2pwmgrV2 directory - j2adduser.c, j2chkuser.c, j2md5bh.c, j2pwmgr.c)
+
+ Maximum password length is 60, that's way overkill, but this was a necessary change.
+
+
+ differences between 2.0n.beta and 2.0m - February 28, 2020
+ ----------------------------------------------------------
+
+ What started off as 2.0m.1 is now 2.0n.beta
+
+ This is a radical change to the JNOS user password authentication, which instantly
+ warrants a change to the version MAJOR - it most certainly is not a MINOR change.
+
+ This is something I have been wanting to do for a long time. It is a bit technical
+ and might be a handful for some. For that I apologize. Please contact me if you have
+ any concerns or are struggling with it - BUT (respectfully asking) not before you've
+ given it your all - I just don't have the time anymore, too many things going on.
+
+ Highlights of this update are :
+
+    No more ftpusers file, it's gone
+
+    The BBS user passwords are now hashed (not encrypted), no more cleartext
+     (however if MD5AUTHENTICATE is defined, we have no choice but to include
+       the encrypted passwords as 'extra information' to the new system)
+ 
+    The Winlink CMS password is properly encrypted again
+
+    The AXHEARD list can now be saved to file or loaded from file, there are
+    some notes on this towards the end of this section. Note, this required
+    some restructuring of the console 'ax heard' commands, it made sense.
+
+    I have enhanced the information shown by the 'mbox sid' console command
+
+ Documentation -> "https://www.langelaar.net/jnos2/documents/jnos.2.0n.password.management.txt"
+ 
+ This update is only available as a patch, and must only be applied to the official 2.0m version.
+
+ WARNING : do NOT use this on any earlier versions !!!
+
+ Just change directory to your JNOS source and do something like this :
+
+   wget "https://www.langelaar.net/jnos2/downloads/linux/2.0n.beta.update.tar.gz" --no-check-certificate
+
+ Now run these commands below :
+
+   tar xvzf 2.0n.beta.update.tar.gz
+
+   edit your config.h (or config.h.default if you don't have one yet), and make sure this entry exists :
+
+     #define GET_PASSWORD_FROM_J2PWMGR
+
+   make clean
+   ./configure
+   make
+
+   NOTE : please MAKE SURE you create a new 'users' subdirectory in your JNOS root directory
+           (a small oversite on my part, I will correct it later)
+
+ The configure script now warns you if you have INP2011 defined - recommend you #undef INP2011
+  (old code, my attempt @ supporting INP3 protocol long ago, some people are reporting JNOS crashing)
+
+ The makefile now enforces the compiler option '-fsigned-char' so if you are running a PI or
+ any ARM based system, you should be fine as far as that issue is concerned.
+
+ I have tested this with gcc 6.3.1 (devtoolset-6), it compiles, the link will fail, BUT
+ the solution is simple, edit your makefile to make sure 'LCURSES = -lncurses -ltinfo'
+
+ I have not tested convers, and done limited testing on ftp user logins.
+
+ DO NOT use this update IF any of the following apply to your setup :
+
+  1) This update breaks SMTP_VALIDATE_LOCAL_USERS - new function needs to be written
+
+  2) This update breaks PPP - userlookup needs to be rewritten
+
+ Save and Load ax25 Heard List
+
+ The ax25 heard list can now be saved to a file or loaded (restored) from a file.
+
+ Add '#define BACKUP_AXHEARD' to your config.h for this feature.
+
+ Decided to also revamp the 'ax heard' command at the JNOS console, since there are
+ now several commands available, all of which really should be categorized as being
+ subcommands of 'ax heard' - so with this update, the new syntax is as follows :
+
+     Usage : ax heard < show | dest > [<iface>]
+             ax heard < save | load >
+
+ The 'dest' and 'hearddest' commands are gone, absorbed by the above syntax.
+
+ The heard data is kept in a new 'AxHeardFile' in the JNOS root directory.
+
+ There might still be some issues with improper time stamps, please let me know.
+
+
+ differences between 2.0m and 2.0k.3B - November 27, 2019
+ --------------------------------------------------------
+
+ NOTE : version bumped up to 2.0m (skipped the L since in lowercase it looks too
+        much like the number one or the letter 'i'), call me mercurial (?)
+
+ IMPORTANT : this started off as Beta release end of September, with additional mods
+             added towards the end of October, and was made available through a new
+             rsync module, 'jnos2NR' during that time. As of November 27, this code
+             is now an official release, the Beta designation has been dropped, so
+             please revert back to the standard rsync module 'jnos2' for download.
+
+     cd <empty directory> ; rsync -av www.langelaar.net::jnos2 .
+
+ WARNING : do NOT patch this version with ANY previous release updates !
+            (in other words do not use tun.c fix, tnlink patch, whatever)
+
+
+1) Some changes to the way JNOS is compiled - a new './configure' script
+
+  After you download the release, if you try to run make, it will tell you to
+  run './configure' first - this is new to version 2.0m and onwards. The script
+  checks to see if the necessary linux development packages are installed - if
+  they are missing, it will tell you that, and you won't be able to continue.
+
+  The 'make' will only work if './configure' successfully makes it to the end.
+
+  At present, the script only checks for ncurses, and open-ssl (only if the
+  winlink secure login is defined in config.h) -  yes, it scans your config.h
+  file. Also, if config.h does not exist, the script now puts in the default,
+  not the makefile anymore as in past versions.
+
+  You can run './configure' as many times as you want, but I suggest if you
+  make changes to your existing config.h or whatever, then do a 'make clean'
+  first, then run the './configure' script. You will have to anyways, since
+  the 'make clean' forces you to run the script again.
+
+  NOTE : the configure script is matched to the makefile, you must update
+         both files or else './configure' will complain about it and stop.
+
+
+2) The 'tun.c' compile issues are resolved, no more patching needed.
+
+   Moved a couple of structure definitions out of the ax25.h and tcp.h
+   header files, creating two new header files - ifax25.h and iftcp.h
+
+   There is no longer any need for the tun_sp2l.c patch which I first put
+   out back in June of 2017, for those trying to compile JNOS 2.0k.1 on a
+   debian-stretch-DI-rc4-i386 distro at the time, the idea was to replace
+   the existing tun.c with my patch version - was a kludge fix at best.
+
+
+3) JNOS should (probably) be run as a non-root user, here is how to do it :
+
+  This change was actually provided to me by KB8OJH (Ethan Blanton) back in
+  January of 2018, and I have been running it on my development system, it's
+  just that I completely forgot to put it into my rsync areas, till now. My
+  profuse apologies for this 'terrible' oversight. Please visit his website
+  at https://kb8ojh.net, there is some cool information on there.
+
+  Very simple to implement, the procedure is as follows :
+
+  NOTE : these are examples based on my system, most likely you will need
+         to change these, or probably you just should change them to suite
+         your JNOS runtime environment. Again - these are just examples.
+
+  a) create a new JNOS user and group
+
+       jnos:x:1001:1001::/home/jnos:/bin/bash
+       jnos:x:1001:
+
+  b) change ownership of the entire JNOS runtime area
+
+       chown -R jnos:jnos /jnos/rte
+
+  c) as root user, configure a tunN interface, and just leave it there forever.
+
+       ip tuntap add mode tun dev tun4
+
+       ifconfig tun4 192.168.200.200 pointopoint 192.168.200.201 mtu 1500 up
+
+     WARNING : make sure you pick a number N that does not conflict with any
+               other tun interfaces that might be running - OpenVPN comes to
+               mind for example, some VM subsystems might use tun as well ?
+
+   d) modify autoexec.nos, add an extra parameter to the 'attach tun' entry,
+      and make sure to comment out the point to point ifconfig.
+
+      So what was previously run as root, for example, below :
+
+       attach tun tun0 1500 0
+
+       shell ifconfig tun0 192.168.200.200 pointopoint 192.168.200.201 mtu 1500 up
+
+      will now just become a one line entry, below :
+
+       attach tun tun0 1500 0 tun4
+
+
+4) The '#define B2F' is now permanent in config.h - do NOT #undef it
+
+   For now I have decided to make #define B2F a permanent define, which basically
+   relegates the '#ifdef B2F' found all over the code to identifying the areas of
+   code specific to B2F operation. If you #undef B2F, you will actually break the
+   checksum processing in the B1F protocol, so it is best to leave it in place.
+
+   Thanks to N6MEF (Michael Fox) for accidently discovering the B1F issue :)
+
+   I might even remove the B2F definition in a future release, it does not hurt to
+   leave this code in place, it's pretty well established by now, so this minimizes
+   the risk of messing up any of the existing forwarding code.
+
+   Which brings us to the next point below ...
+
+
+5) Introducing the new '#define WINLINK_SECURE_LOGIN' in config.h
+
+   The only reason the openssl developmenet package is required when compiling JNOS
+   is because we need the md5 hash routines to support the 'Winlink Secure Login'.
+
+   For those who want to pull mail off the CMS servers, you need to have this
+   defined, or else the CMS servers will refuse to let you go any further. Yes,
+   you can actually still 'kick wl2k' - search for December 15, 2017 further
+   down in this file on how to setup for CMS forwarding - but it will fail.
+
+   Previously '#define B2F' was used to encase the Winlink Secure Login code.
+    (but now that it's permanent, we have this new define in place)
+
+
+6) Bit of a surprise, recent versions of linux are no longer supporting the old
+   setkey () and encryp () functions, which has presented me with the problem of
+   not being able to encrypt my JNOS 2.0 password management database. Passwords
+   are still mangled, that's not the issue, but for now I've had to comment out
+   the part which encrypts the mangled values - don't want a 'rushed solution'.
+
+   Looking for a replacement - basically libcrypt (-lcrypt) is no more ...
+
+   IMPORTANT (if you forward with a Winlink CMS) :
+
+    It just means you will have to wipe the /jnos/users directory and run
+    the j2pwmgr utility again to recreate the Winlink Secure Login passwd
+    information. Unfortunately the files in the directory from before are
+    not going to be compatible with this newest version, sorry for that.
+
+
+7) Support for RMS call (already available in previous release), BUT ...
+
+   The only thing to note is that there is no more 'tnlink' subdirectory,
+   the source is now part of the main release. Do NOT use the patch from
+   previous version 2.0k.3B - do not use any patch on the new 2.0m !
+
+   If you wish to support Packet Winlink users on your own JNOS, now you can :)
+
+   Originally the define was going to be '#define RMSCALL', but I have decided
+   to instead use '#define TNCALL' since the feature can be used with ANY telnet
+   service for that matter, even another BBS (how I tested original prototype).
+
+   Please check the release notes for 2.0k.3B (further down) on how to use this.
+
+
+ 8) New way to configure White Page (WP) processing, read carefully please
+
+   The rewrite file is very important and gives the ultimate flexibility in defining
+   what your specific JNOS system should process as far as White Page (WP) updates.
+
+   Here is the portion of my rewrite file that I am currently testing with :
+
+     #
+     wp@ww                           whitepages
+     wp@eu                           whitepages
+     wp@ve4klm                       whitepages
+     wp@ve4klm.#wpg.mb.can.noam      whitepages
+     #
+     *@ve4klm.#wpg.mb.can.noam ve4klm
+     #
+
+     Files : smtpserv.c, smtpcli.c, wpages.c
+
+   Detailed Documentation for JNOS 2.0 white pages can be found here :
+
+     https://www.langelaar.net/jnos2/archive/documents/practical/wpages
+
+
+ 9) A fix to wildmat.c, added on October 22, thanks to VE3CGR (Ron), who reported
+    this long ago, any time he ran the expire command, JNOS would crash. Regarding
+    his configuration, he uses NNTP services and his expire.dat is loaded with tons
+    of NNTP group names, some with a '?' character as part of the name, triggering
+    the crash.
+
+    It's a simple fix, but quite honestly, any of the wildcard stuff turns my brain
+    to jello. I still don't understand the changes made in 2014 for N6MEF (Michael),
+    but I have been told it's still in use, and working for them - so that's good.
+
+
+ 10) Now checking for missing BID on ALL incoming S proposals - not just SB, but
+     also SP, which folks mistakenly use sometimes when sending bulletins. A fix
+     to mboxmail.c was provided by N1URO (Brian Rogers), added on October 16.
+
+
+ 11) Fixed several potential string buffer overflows as reported by the compiler.
+
+
+ 12) Investigating removal of passwords from ftpusers and incorporating them into
+     the same JNOS 2.0 Password Management Database as currently used for saving
+     the Winlink password. At the same time, I am removing the encryption of any
+     passwords and replacing them with hash:salt information instead, as per the
+     recommendations of several high profile security institutions, meeting the
+     need that nobody, not even the administrator, will be able to determine a
+     users password (because HASH values only go in one direction).
+
+     One could even consider multiple iterations, one could include the CPU id
+     of the physical computer or some other identifier unique to the JNOS host
+     setup, locking the password hashes to the specific server JNOS runs on.
+
+     As much as I want to entertain the idea of using HMAC-SHA-256, PBKDF2, or
+     whatever the flavour of the year, the code can get complex, so for a first
+     time prototype, MD5 is fine - it's JNOS, not a financial institution :|
+
+
+ 13) Investigating the use of multiple REWRITE_TO (in rewrite file) for redundant
+     message passing, in case a recipient handling host is down and we simply must
+     get it passed some other way ? For example, my rewrite could be :
+
+      *.usa.noam aa6hf#RDN#n1uro
+
+     and have #RDN# processed by the smtp client and server within JNOS ?
+      (nothing concrete, just a very intriguing idea at this time)
+
+
+ addition to 2.0k.3B (version left as is) - August 10, 2019
+ ----------------------------------------------------------
+
+1) Here is the Beta version of JNOS RMS support, the only thing that leaves to
+   be done is when the Winlink (RMS) Express client has finished a Packet Winlink
+   session, the packet side does not disconnect immediately, and depends on the
+   client to timeout, or the sysop on the client end needs to STOP the session
+   manually - this after the forwarding has finished.
+
+   I want to release this now, since some people are asking about it, and I will
+   not be able to work on it for the next few weeks, so now is the time I guess.
+
+   Again, this feature is released as a subdirectory, so when you rsync the
+   official release, you will see a new tnlink subdirectory with 10 files.
+
+   IF you are interesting in using your JNOS as an RMS node, copy the 10 files
+   to your main source area, add the following define to your config.h file :
+
+	#define TNCALL
+
+   Edit the makefile and add the tnlink.o object to the end of the SERVERS
+   section, so that 'wpages.o merge.o sort.o ufgets.o' will now look like
+   'wpages.o merge.o sort.o ufgets.o tnlink.o' instead.
+
+   Then do 'make' to compile a new JNOS binary.
+
+ WARNING : you must have the latest official source from rsync if you are
+           to copy these files, if you have an older version, you're playing
+           with fire, things might compile (or not), but you may wind up with
+           an unstable JNOS binary or one that crashes left right and center.
+
+   Choose a callsign you want Winlink (RMS) Express clients to connect to,
+   then add an entry similar to the following to your autoexec.nos file :
+
+     ax25 tncall ve4klm-11 cms.winlink.org 8772 cronly
+
+   Obviously I'm using VE4KLM-11 for mine - make sure you change to your own call.
+
+ NOTE : I am assuming you have the 'ax25 mycall' parameter configured in
+        your autoexec.nos file. It's used for the CMS application login.
+
+ I have it working with the latest Winlink Express 1.5.22.0 client.
+
+ PLEASE : send me reports and feedback, thank you.
+
+ addition to 2.0k.3B (version left as is) - August 7, 2018
+ ---------------------------------------------------------
+
+1) This is something I've been wanting to do for a very long time ...
+
+   I finally got tired of entering the NODES command at the BBS prompt, only
+   to watch several hundred entries stream by and miss the one I want, so now
+   you can pass a substring to look for (not the same as a pattern), ie :
+
+     Area: ve4klm (#1) >
+     nodes uro
+     NJDURO:MB7NJD-5   QSOCCT:N1URO-11   SQLURO:N1URO-13    MFNOS:N1URO-14
+     RSBYPI:N1URO-2     X-URO:N1URO-3    BBSURO:N1URO-4    UNIVLE:N1URO-5
+      DXURO:N1URO-6
+     *** 9 nodes displayed
+
+   The 'nodes *' remains the same, the substring filter is case insensitive.
+
+   For the JNOS console, it's a bit more complicated. To accomodate the feature
+   into the 'netrom route' console command, the command syntax required fixing.
+
+   Up till now, most people are probably used to entering just 'netrom route'
+   to get a node dump, just like if you typed in 'nodes' at the BBS prompt. I
+   know it might be convenient, but it breaks syntax convention and makes it
+   difficult to add new features, so sorry - you can't do that anymore :)
+
+   Now you have to enter 'netrom route nodes', and if you want to pass the
+   substring (like you would at the BBS prompt), then it would look like :
+
+     jnos> netrom route nodes VK 
+     DOTXRP:VK2DOT-1   DOTFBB:VK2DOT-6     DOTN:VK2DOT-7    DOTCH:VK2DOT-8
+     HGRBBS:VK6HGR-14  HGRNOD:VK6HGR-15  NODHDM:VK7HDM-4
+     *** 7 nodes displayed
+
+   This is because 'netrom route' actually has 4 other subcommands, so putting
+   in the 'nodes' subcommand brings it all to a nice consistent interface such
+   that if you enter just 'netrom route' you see ALL available subcommands.
+
+  NOTE : 3 new files (mboxgate.c, netrom.h, nrcmd.c) in 2.0k.3 subdirectory
+
+
+ differences between 2.0k.3B and 2.0k.2 - July 24, 2018
+ ------------------------------------------------------
+
+1) This is beta code to preserve the CASE of the message id (BID) for any
+   messages originating from outside. Don't touch the case of the BID when
+   it comes in, and don't touch it on the way out.
+
+   I have been running this for a whole week with a few forwarding partners,
+   and so far it seems to be doing the job.
+
+   This patch is strictly about uppercase/lowercase BID - nothing else.
+
+   The format of the BID and/or R: line content is another can of worms :)
+
+  Use following command to retrieve files :
+
+     rsync -av www.langelaar.net::jnos2/2.0k.3 .
+
+  NOTE : it will create a subdirectory called 2.0k.3 (4 files)
+
+ correction to 2.0k.2 (version left as is) - March 25, 2018
+ ----------------------------------------------------------
+
+1) I forgot to include 'null terminate fix' in one file, an important one
+   at that (aprs.c), and the NOSaprs version will also stay as is @ 2.0h
+
+ correction to 2.0k.2 (version left as is) - December 21, 2017
+ -------------------------------------------------------------
+
+1) Completely forgot to look for the 'smtp:' prefix that some people
+   use to have winlink deliver third party mail over B2F forwarding,
+   so please note an updated fbbfwd.c source file.
+
+
+ differences between 2.0k.2 and 2.0k.1 - December 15, 2017
+ ---------------------------------------------------------
+
+ NOTE : This update is simply a quick fix for some immediate issues ...
+         (if you're not doing winlink, not doing APRS, then don't bother)
+
+1) Important updates regarding Winlink and their recent CMS switch over.
+
+ a) My existing forward.bbs configuration stopped working on me, so looking at
+    the raw data, seems the new CMS setup is sending me a leading CR character
+    before the Callsign prompt (in my JNOS setup anyways). I have corrected my
+    entry in forward.bbs to accomodate this. The following is now what I use :
+
+      -------
+      wl2k
+      telnet cms.winlink.org 8772 cronly
+      +Callsign :
+      *10
+      ..YOURCALLSIGN
+      +Password :
+      @10
+      .CMSTelnet
+      wl2k
+      -------
+
+    NOTES : '*' takes care of the leading CR character mentioned above
+            '.' before the callsign is used to setup the EOL sequence
+
+    I'm embarrassed to admit, my forward.bbs before this point was garbage. I
+    should be surprised it even worked. The '+' entry simply sets up a search
+    string. You still have to (MUST) use the '@' or '*' entry to actually wait
+    for the string to appear before the script continues on - something I had
+    failed to do, so basically the script would connect, force feed callsign
+    and password to the CMS system without waiting for it's prompts :]
+
+    To initiate forwards with winlink, simply use 'mbox ki Wl2k | wl2k'.
+
+ b) The bigger problem is the appearance of a ';PM' directive in the forward
+    session, which breaks the forwarding between JNOS and the winlink CMS :
+
+      MBOX (wl2k) FBB error, last read : ;PM: VE4KLM S2X704ESAGW6 202
+       maiko@xxxxxx.xxxx.ca //WL2K testing email pickup via nos system
+
+    The reference page 'https://www.winlink.org/B2F' says the directive gives
+    a basic list of mail pending for any users tied to that winlink account.
+
+    JNOS now properly handles the ;PM directive and logs the content.
+
+    * File affected : fbbfwd.c
+
+ c) An update on how to send (SP) messages to any callsign at Winlink :
+
+    NOTES : no entries required in your rewrite file
+            define a [wl2k] area in your forward.bbs file
+
+    ANY user at the BBS prompt simply has to do the following :
+
+      sp ve4klm@wl2k
+
+    The next time JNOS does a 'mbox ki wl2k' the message will go out.
+
+    NOTE : start the Subject: line with '//WL2K' or else the CMS system won't
+           deliver your message, even if the forward reports a successful b2f
+           session as being completed.
+
+    I have code to automatically prefix the '//WL2K' on the users behalf, but
+    not adding it right now, since I've got too many other mods in the way.
+
+    * File affected : fbbfwd.c
+
+ d) An update on how to reply (SR) to any message that came in from Winlink :
+
+     same NOTES as section c) above.
+
+    After reading the message with 'r' command, you simply enter 'sr'.
+
+    I have added code to force the reply to the [wl2k] area, so the next time
+    you 'mbox ki wl2k', the response will go out. It seems you do not need to
+    prefix the reply with '//WL2K', which is already in the subject from the
+    original message, so existing code works fine (ie, no subject prompt).
+
+    * File affected : bmutil.c
+
+2) Extended Mail Header features for Outpost clients
+
+   Code is present to allow for displaying of extra mail headers to help
+   mail clients like Outpost to better deal with MIME types. The code is
+   currently defined out, and requires two other source files which have
+   not been included in this release, waiting for people to finalize ...
+
+    * File affected : bmutil.c
+
+3) Trying to fix some issues with APRS internet system
+
+   Fixed a bunch of code where I was sending the null terminator after eol,
+   which I'm not sure why I ever did it, but JavaAPRS was not liking it one
+   bit, so it seems to be much better now. Typical symptoms were 'erroneus
+   packets dropped', 'Invalid source callsign', and data not making it to
+   the APRS internet system.
+
+   Looks like I also forgot to move the change of 'IGATE,I' to 'qAR,IGATE'
+   into the latest rsync area, not sure how I missed that, I apologize :]
+
+    * Files affected : aprssrv.c, aprs.c, aprsbc.c, aprswx.c, aprs.h
+
+   Should probably bump up the NOSaprs version (I did) - now @ 2.0h
+
+
+ differences between 2.0k.1 and 2.0k - February 10, 2017
+ -------------------------------------------------------
+
+1) One of the bigger JNOS user groups was encountering random hangs of SMTP
+   sessions between their systems. Perhaps unique in todays day and age, all
+   of their systems are interconnected using TCP/IP over 1200 baud AX25, not
+   something many people do much anymore, so that's pretty cool in itself.
+
+  1200 baud TCP/IP probably gets nicely congested, should hangs be a surprise ?
+
+   The raw interface logs clearly show several cases of JNOS sending out a XLZW
+   request without getting the expected response from the remote host. It turns
+   out the recvline() call waiting for the response simply never had an alarm()
+   timeout call set on it, so it would wait forever, stalling the SMTP session,
+   until the sysop terminated (reset) the TCB for that SMTP session.
+
+   Thanks to Michael (N6MEF) for his data collection savviness.
+
+   Files : smtpcli.c
+
+2) Added CAPA and UIDL features to the POP3 service. So you can now enable the
+   following server settings in your thunderbird (or whatever else) client :
+
+     "Leave messages on server" and (optional) "Until I delete them"
+
+   NOTE : I would restart thunderbird after changing it's server settings :)
+
+   Thanks to Charles (N2NOV) for pushing me to implement this.
+
+   You must add the following line to your config.h file before you compile :
+
+     #define J2_CAPA_UIDL
+
+   Files : pop3serv.c config.h.default
+
+3) The JNOS smtp client is limiting in that if one sends an email to a main
+   recipient and multiple carbon copy recipients (all on the same destination
+   host), then delivery of carbon copy recipients is delayed till the next SMTP
+   tick, and so on. This scenario was observed by N6MEF, so I made a few small
+   changes allowing multiple SMTP sessions to exist to the same destination
+   host, which should 'solve' the problem, but I feel the need to point out
+   something here.
+
+   Is this really a good idea for systems interconnected using TCP/IP over 1200
+   baud AX25 ? Enabling multiple SMTP connections to the same host at the same
+   time makes me wonder if network congestion is going to become an issue ...
+
+   You must add the following line to your config.h file before you compile :
+
+     #define J2_MULTI_SMTP_SESSION
+
+   This addes a new 'prefix' variable to the 'smtpcli struct'.
+
+   Files : smtp.h smtpcli.c config.h.default
+
+4) Fixed a bug in the convers code where if a link is lost it never reconnects
+   again, and more bizarre - link status shows an IP address not even close to
+   what it should be for the remote host. Thanks to Ron (VE3CGR) for bugging me
+   about this. It turns out the software version information returned from the
+   remote host was being allowed to overwrite the socket structure for the link,
+   corrupting it's IP address. See my comments (dated 31Aug2016) in the file.
+
+   Also added some code to log sessions to the main JNOS log file.
+
+   Files : convers.c
+
+5) Commented out CC_LIST entries from main JNOS log file, they are of no use in
+   a production environment, added 'days since' info to J2_SID_CAPTURE feature,
+   which previously displayed only time, so you had no idea if it was today, or
+   several days ago.
+
+   Files : mboxmail.c
+
+6) The temporary filename prefix for JNOS is now 'jnos', used to be 'file'.
+
+   Files : j2tmpnam.c
+
+7) JNOS was crashing within the MAIL_LOG_EXTRAS feature because of a couple of
+   free() calls which should not have been put in there, this is now fixed.
+
+   Files : smtpserv.c
+
+8) JNOS was crashing within the JNOS_LOG_INCOMING_LOCAL_PORTS feature because
+   it was not checking for NULL 'up->name', found while debugging 'smtp kick'.
+
+   Files : main.c
+
+9) Fixed a variety of compiler warnings (depending on config.h settings).
+
+   Files : pop3cli.c, nntpserv.c, expire.c, timed.c, http.c, wpages.c,
+            at.c, sessmgr.c, pppcmd.c, ppplcp.c, ppppap.c, pppipcp.c,
+             slhc.c, mailbox.c, iproute.c. smtpserv.c
+
+A) Some variable names have changed over the years, reworded a warning entry in
+   the main JNOS log, added new features to the default configuration file, and
+   of course bumped up the JNOS version number.
+
+   Files : tcpgate.c, ppplcp.c, sockuser.c, config.h.default, version.c
+
+
+ version change only - 2.0k.rc changed to 2.0k - July 26, 2016
+ -------------------------------------------------------------
+
+1) After several weeks of testing by various people, and nothing but good
+   reports coming in, it's time to make 2.0k.rc the latest official version,
+   but rebrand it as just plain old 2.0k - only one file change (version.c).
+
+
+ modifications to 2.0k.rc - July 3, 2016
+ ---------------------------------------
+
+1) Now presenting B1F instead of BF for incoming connects. It's time to move
+   up in the world. We can already handle connecting to a B1F capable system,
+   so this technically makes us fully B1F capable now. The 'resume' feature
+   however is not 100% and still breaks - trying to fix, testing difficult.
+
+2) Regarding forward.bbs file, JNOS expects a valid connect command immediately
+   after the 'area' identifier for a particular BBS entry. If you put a comment
+   entry ('#') between the identifier and connect command, then nothing happens
+   even though JNOS says it is connected, no socket is assigned. This is fixed,
+   so you can now put comments anywhere in the file. Bob (VE3TOK) found this.
+ 
+3) You can now suppress the EOL warnings (put in for linfbb), command is :
+
+     mbox eolwarnings off
+
+   By default, they are enabled - at some point they'll annoy you (maybe).
+
+4) Instructions (to generate a new JNOS binary) :
+
+   IF you already have the original 2.0k.rc, then you simply have to do this :
+
+     rm forward.o mailbox.o mboxcmd.o sockuser.o ; make
+
+   Otherwise follow the instructions for 2.0k.rc below.
+
+
+ differences between 2.0k.rc and 2.0j.7v - June 26, 2016
+ -------------------------------------------------------
+
+ This release sees some significant changes to the source, and quite honestly
+ has been a difficult process, not so much the coding and testing, but figuring
+ out how to do it all, while keeping everyone relatively happy in the process.
+
+1) Telnet compressed forwarding issues over the last decade or more ...
+
+ In simple terms, for any telnet session, there is one particular character
+ value you have to watch out for. The value 255 (0xff) is also known as the
+ IAC (interpret as command) byte. It's an escape character which allows for
+ the embedding of telnet commands into the session itself. This is detailed
+ in RFC 854 (telnet protocol specification), see the webpage link below :
+
+    https://tools.ietf.org/html/rfc854
+
+ JNOS has 'support' for IAC in parts of the code, but not in the code that
+ does the actual FBB compression (the yapp functions). So what happens is
+ that if you have a telnet session with a system that is using IAC as per
+ the RFC in the compression routines, JNOS does not care. It does not see
+ the IAC as an escape character, it just sees it (and command bytes that
+ follow) as just plain old data. The end result is that things 'break'.
+
+ For years, I thought trying to intrepret IAC in these functions would most
+ certainly corrupt any compressed data, honestly thinking it was transparent,
+ with no imbedded byte sequences and such - well, live and learn eh ?
+
+ I've determined that LINFBB and OBCM both interpret the IAC byte as per the
+ RFC for the compressed part, where as JNOS, BPQ, and Winlink (CMS) do not !
+
+ Sooo ... in this version (2.0k) and higher, I have added a flag deep inside
+ the socket layer code to flag whether JNOS should process the IAC byte or
+ just treat it as data. The default behavior has always been to treat it as
+ plain old data. I want to preserve this to ensure backwards compabitity with
+ all older versions of JNOS. This is a final decision, there is no going back
+ on it, however the sysop actually has a choice (so everyone wins I hope).
+
+ If you have an existing source tree, you MUST add the following directive to
+ your 'config.h'. This is to preserve the original JNOS behavior with regard to
+ the IAC byte. It's a new compiler directive - it's very important to add it :
+
+    #define JNOS_DEFAULT_NOIAC
+
+ IF you do NOT want to preserve the original behavior (Gus), then remove it.
+
+ Syntax changes
+ --------------
+
+    autoexec.nos or JNOS console :
+
+       start telnet [port] [options]
+
+    forward.bbs file :
+
+       telnet host [port] [options]
+
+    In both of the above case, possible options are (single or combined) :
+
+       cronly        telnet listener expects just 0x0d for EOL
+       iac           enforce IAC during FBB compression
+       noiac         treat IAC as regular data during FBB compression
+  
+    the 'noiac' option is there for those who choose NOT to preserve the
+    original behavior of JNOS regarding IAC when they compile their code.
+
+    IF you are passing options, then you MUST specify a port, so even
+    for the default telnet port 23, you will have to specify the 23.
+
+ You can run multiple 'start telnet' commands, different ports and options
+
+ I have put together the following file with forwarding config examples :
+
+   http://www.langelaar.net/jnos2/documents/examples_2.0k.txt
+
+ Thanks to Bob (VE3TOK) and Gus (I0OJJ) for providing much of this !
+ 
+2) Removal of 'mbox fbb 3' and 'mbox noB2F' commands
+
+ I have decided to remove 'mbox fbb 3'. It was a bad mistake from day one, so
+ we're back to 'mbox fbb 2' as the default like the original JNOS. Your winlink
+ outgoing forwards will not be affected, B2F and FC proposals will still work
+ properly, but let's face it, there is no reason to use FC proposals between a
+ JNOS system and other JNOS or other BBS software for that matter (yet). There
+ is no benefit, and in case anyone hasn't noticed, the RLINE and From headers
+ are not properly supported in my FC proposal code (since Winlink didn't need
+ any of that). This means we are going back to original functionality, but we
+ can still talk to Winlink CMS servers. Since B2F will only be available for
+ talking to Winlink, we won't be needing the 'mbox noB2F' command either.
+
+ This too is a final decision, there is no looking back. Apparently Bernard
+ polled his community and I have heard through a grape vine that B2F will not
+ be incorporated into FBB right now. That does not mean I am removing B2F from
+ JNOS, it's just that most other BBS software should not be burdened by it.
+
+3) Forwarded messages (with GMT timestamps) are now indexed to local time when
+   they come in, not to GMT time. This should solve several issues for people,
+   including those that are using the 'expire future' option.
+
+4) More enhancements to logging of forwarding sessions, including non-FBB ones.
+
+5) SNMP server now has security - you can set community / ip address patterns.
+
+   New command syntax for 'snmp' console command is :
+
+     snmp ifaces		display list of interface index and names
+
+     snmp ro			display the ACL
+
+     snmp ro blahblah		set community name (any ip)
+
+     snmp ro 3R~qWc 192.168.1	set community AND ip
+     snmp ro jnos 44
+     snmp ro jibberish 1.2.3.4
+
+   This is a prototype, you can only add, not remove to the ACL ...
+
+6) Finally got rid of ALL compiler warnings - my development compiler is :
+
+     gcc version 4.8.3 20140911 (Red Hat 4.8.3-9) (GCC)
+
+   It 'should' compile clean now - please let me know if you find anything.
+
+7) Reinstated validation of the 'F> NN' line for incoming proposals, believe
+   it or not it has been commented out for almost 10 years, it really should
+   have been left in place.
+
+   The obsolete 'telpac' option has been deleted from 'forward.bbs' file.
+
+   A small change which ensures FQ is only sent when it should be. So far it's
+   not created any issues that I can see of with any of my forwarding partners.
+
+   The old MB_XFBB_KLUDGE code has been 'stripped' out, not required any more,
+   since telnet service code has been restructured, still same functionality.
+
+8) APRS Message Center crashes possibly (not 100 percent sure) fixed. This was
+   reported by Gus (I0OJJ) quite some time ago. A compiler warning made me take
+   a look at this more closely, and it's possible it is fixed - needs testing,
+   since I've never been able to reproduce the crash.
+
+9) Added new code to deal with inconsistent end of line (EOL) sequences being
+   encountered while forwarding with linfbb. JNOS would expect 0x0d 0x0a, but
+   at some point linfbb would start sending just 0x0d (no 0x0a at all). If one
+   had 'mbox tdisc' configured, JNOS would hang for that time, waiting for the
+   0x0a it would never receive, but instead get a first byte of data from the
+   next proposal or FBB command, which effective broke the forward session. If
+   you did not configure 'mbox tdisc' at all, JNOS would likely hang 'forever'
+   depending where it was in the forward session. I have talked with Bernard
+   about it, and he is aware of the issue. In the meantime it can be dealt
+   with on the JNOS side. 
+
+   Note the newly created EOL gobble structures and code, including a new
+   recvchar_witheol () function, which allows us to save any data mistakenly
+   interpreted as a EOL byte, and reintroduce it into the data stream a bit
+   later on (inside of recvline). The gobble stuff is in sockuser.c file.
+
+A) A few experimental development tools / code you might find handy (or not) :
+
+   I have added a new SID capture capability that will track all SIDS for any
+   incoming sessions, and give you the callsigns heard using those SIDS, along
+   with the last time that call was heard using that SID. Again, this was more
+   a tool I created to help me with development, you might find it useful. To
+   try it out, you have to '#define J2_SID_CAPTURE', followed by :
+
+      rm mboxcmd.o mboxmail.o ; make
+
+   If you are running running multiple TCP (telnet) listeners with port values
+   higher than 1000 and you want the JNOS log to include the local port for a
+   particular incoming telnet session (so you can clearly identifiy which port
+   a session is coming in on), you can have JNOS log that information. To try
+   it out, you have to '#define JNOS_LOG_INCOMING_LOCAL_PORTS', followed by :
+
+      rm main.o ; make.
+
+B) OpenSSL routines and a DISCLAIMER - goes hand and hand with instructions
+
+     YOU MUST READ : https://www.openssl.org/source
+
+   in particular, the section entitled Legalities - you have been warned !
+
+   This version requires crypto and crypt libraries for the B2F component of
+   the software. I am working on a better way to configure this, but for now
+   you'll have to install these libs on your linux distribution (examples) :
+
+       RHEL based : yum install 'openssl-devel'
+
+       UBUNTU based : apt-get install libssl-dev
+
+   IF you do not want B2F (Winlink) support, you don't have to install the
+   libs, however you will then have to edit the 'makefile' and remove :
+
+     -lcrypto -lcrypt           (and #undef B2F in your config.h of course)
+
+   I have tried to create a Makefile that automatically deals with this, but
+   after several hours of tearing hair out of my head, I gave up (for now). I
+   will eventually figure it out, but now I just want to get this released.
+
+C) Instructions (to generate a new JNOS binary and password utilities) :
+
+  for default (original) JNOS behaviour with regard to the IAC byte and telnet
+  forwarding, MAKE SURE you add the following define to your 'config.h' file if
+  you already have an existing source tree :
+
+     #define JNOS_DEFAULT_NOIAC
+
+  after this, just run the usual 'make clean ; make' to generate binaries.
+
+
+ differences between 2.0j.7v and 2.0j.7u - March 10, 2016
+ --------------------------------------------------------
+
+1) I am trying to improve the quality and usefulness of what is logged in the
+   main JNOS log file during forwarding sessions, a work in progress, but I'd
+   like to get an update out that might be of help to some folks.
+
+   Files : fbbfwd.c, lzhuf.[ch], mailbox.c
+
+2) You can add msgid and subject to log entries made to 'spool/mail.log' by
+   adding the following compiler directive to 'config.h' before compiling :
+
+     #define MAIL_LOG_EXTRAS
+
+   Files : smtpserv.c
+
+3) Instructions (to generate a new JNOS binary) :
+
+   rm fbbfwd.o, lzhuf.o mailbox.o, smtpserv.o ; make
+
+
+ corrections to 2.0j.7u (version left as is, only 1 or 2 people had downloaded)
+ ------------------------------------------------------------------------------
+
+  * December 9 - Needed a new command to set the winlink callsign. Using the
+    value set by the 'ax25 bbscall' command was too restrictive (thanks Gus).
+
+  * December 10 - Fixed an incorrect extern declaration in forward.c, my JNOS
+    development system would crash whenever I kicked 'wl2k' area. Surprising,
+    the 2 other systems using the latest update were supposedly running fine.
+
+
+ differences between 2.0j.7u and 2.0j.7t - December 8, 2015
+ ----------------------------------------------------------
+
+1) I have not been able to get anything done during most of November and the
+   first week of December, due to me being on the road to support my youngest
+   in his quest to be the best in long track speedskating, and now that I am
+   back home for a while, I still have too much stuff on my plate, oh well.
+
+2) JNOS now supports the Winlink Secure Login requirement for a single user.
+
+   You should give the following URL a very good read, and if you are a winlink
+   user, you will have received several notices over the past few months as to
+   how the Winlink Secure Login works and why they are doing it :
+
+     http://www.winlink.org/content/cms_login_changes_due_soon
+
+   Files : makefile, forward.c, mboxcmd.c, wlauth.c (new)
+
+   Directory : j2pwmgr (source code for new JNOS password manager prototype)
+
+   I originally used the 'ax25 bbscall' parameter to set the winlink callsign
+   used in the challenge response, but Gus (I0OJJ) immediately discovered a big
+   problem with that. To begin with, winlink forwarding in JNOS is usually done
+   through telnet sessions, where the login call is configured in forward.bbs.
+   
+   The login call does not necessarily have to be the same as 'ax25 bbscall',
+   and in many cases it is not the same, so we need a new JNOS command to get
+   around this. You must set your winlink callsign if you are going to forward
+   with a winlink server. Use the following new command to do this :
+
+     mbox winlinkcall <callsign>
+
+   The <callsign> should match what you have for 'wl2k' in forward.bbs file.
+   
+   WARNING : make sure to create a new 'users' directory (as follows) :
+
+     cd /jnos ; mkdir users
+
+   Sure - 'the software should do that for you' - but it doesn't right now.
+
+   To create a password for your winlink callsign, use the following command :
+
+     cd /jnos ; ./jnospwmgr -a <callsign> -w
+
+   This is a first version, nothing fancy, but it works, it will evolve.
+
+   IMPORTANT : the above password is internal to the Winlink challenge/response
+   mechanism. You do NOT have to configure it anywhere else. You do NOT have to
+   make ANY changes to the forward.bbs file for the new secure login protocol.
+
+   If you didn't know it already, the password configured in forward.bbs for
+   the 'wl2k' area is simply an application (client) validation password :)
+
+3) There is an issue with TLD length in domain name lookups, and after doing a
+   ton of reading on this topic, it appears JNOS is certainly not alone in it's
+   failure to properly handle TLD lengths greater then 4. I have to be honest
+   about this, it's complicated and everyone seems to have their own solution,
+   so my interim solution for now is to allow the JNOS sysop to configure this
+   to their own needs.
+
+     Files : domain.c
+
+   By default JNOS appends the 'domain suffix' value to DNS lookups containing
+   a Top Level Domain (TLD) of length 4 or higher. I have added a new command
+   to JNOS such that you can change this behavior. The command is as follows :
+
+     domain TLDlen <tld length>
+
+   Set <tld length> to -1 if you do not want anything appended on lookup.
+
+4) added a log entry in the message refusal code, saying if msgid related, not
+   a huge change at all, and I am still trying to figure out how to implement
+   the indexing (GMT versus local time), not as easy as I figured, and I want
+   to do it 'right'. I needed to get a version out, so I'm leaving the fix for
+   a subsequent release.
+
+
+ differences between 2.0j.7t and 2.0j.7s - June 29, 2015
+ -------------------------------------------------------
+
+1) The presence of a DKIM-Signature in a mail header also messes up the index
+   rebuild of user mailboxes, so even though the previous version (7s) allowed
+   one to finally read messages properly, the listing was still messed up.
+
+     file : index.c
+
+2) In the previous version (7s) I accidently included code where if JNOS does a
+   domain name lookup while a message is being composed, and the lookup fails,
+   JNOS will stop and not allow composition to continue, instead of passing it
+   to an smtp gateway if one is configured - which is how it always worked.
+
+     files changed : smtpcli.c
+
+   The current code is not a perfect solution, a few users have brought up some
+   interesting points. I should probably review the whole thing down the road.
+
+
+ differences between 2.0j.7s and 2.0j.7r - June 6, 2015
+ ------------------------------------------------------
+
+1) JNOS can now attach a KISS port to FLDIGI - experimental, for example :
+
+     # connection to fldigi is like AXUDP, using UDP port 10000
+     attach axudp hf 256 192.168.1.174 ve4klm 10000 10000
+
+     # then configure the port for FLDIGI KISS mode
+     attach fldigi hf
+
+   To use, #define FLDIGI_KISS in config.h - 'rm ax25.o config.o ; make'
+
+     files changed : ax25.c, commands.h, config.c, makefile
+
+          new file : fldigi.c
+
+2) The presence of DKIM-Signature in the mail headers messes up the display of
+   messages when a BBS user reads their messages, and also interferes with the
+   processing of these messages. For instance, the 'Status: R' header entry is
+   incorrectly written back to the users mail file. The DKIM-Signature contains
+   blank lines, which usually indicate end of mail headers.
+
+     files changed : bmutil.c
+
+3) It appears bounce notification emails (mdaemon call) are being deleted by
+   the default expiry feature, well before the expiry time. It turns out that
+   the bounce notification emails are missing a RECEIVED mail header, which is
+   required for proper indexing of the message. I figured this out after doing
+   a rebuild of the mail users index, and noticing the age being set to 0.
+
+     files changed : smtpserv.c
+
+4) Now logging JNOS console (F10) commands to the main log file.
+
+     files changed : main.c
+
+   To use, #define JNOS_LOG_CONSOLE in config.h - 'rm main.o ; make'
+
+5) The 'While talking to' line in failed mail notifications should identify the
+   mail server JNOS was talking to, NOT the recipient domain. Also added a few
+   preprocessor statements (#ifndef UNIX) with regard to the 'ft' variable, to
+   clear up compiler warnings.
+
+     files changed : smtpcli.c
+
+
+ differences between 2.0j.7r and 2.0j.7q - March 17, 2015
+ --------------------------------------------------------
+
+   files changed : cmdparse.c, mailbox.c, tcpcmd.c, nr4.c, nr4timer.c
+                   ip.h, config.h.default, version.c
+
+   NOTE new config.h options below :
+
+     #define SUBCMD_WASTEFULL_PROMPTING
+     #define BLACKLIST_BAD_LOGINS
+     #define TCPACCESS_EXPIRY
+
+1) I have modified the tcp access function so one can now insert an entry
+   anywhere into the 'table'. Before this, you could only add entries to the
+   end of the 'table', so if you wanted to 'insert' a new record you would have
+   to first delete the last one (or more), add your new one, then re-add the
+   deleted one (or more). You might as well just have reconfigured your rules
+   in the autoexec.nos, and then restarted JNOS instead. The new syntax is :
+
+ tcp access <permit|deny|delete> [L#] <dest addr>[/<bits>] [lowport [highport]]
+
+   Note the new OPTIONAL [L#] argument. So if you wanted to insert at the very
+   top of the list, you would use L0. Use L1 if you wanted to go down 1 entry
+   from the top, and so on. The # denotes depth from top, and note there is no
+   space between the L and #. Other than that, the command remains the same.
+
+   The L# option does NOT apply to the 'delete' function.
+
+2) I get tons of telnet login attempts with user names like 'root', 'admin', or
+   'sh', basically non-ham calls, so that got me thinking, why not give one the
+   option of blacklisting the IP addresses responsible for these attempts, kind
+   of like the sshblack script from years back, but JNOS style. All you have to
+   do to enable the feature is use the following command :
+
+     mbox blacklist N
+
+   where N is a numerical value. 0 means no blacklisting, N is a time value in
+   seconds after which the blacklist expires for any particular IP address. The
+   expiry value is only relevant if you run the new tcp access expiry process,
+   which is explained further below. If you don't run expiry, then of course
+   the entries will stay till JNOS restarts, regardless of the value of N. The
+   blacklist feature uses the newly added tcp access functionality to do its
+   work - If you blacklist, you have to (at minimum) have the following :
+
+     tcp access permit all
+
+   The blacklist code inserts DENY rules prior to existing entries, so even if
+   you are not using 'tcp access', at minimum you need the above default rule.
+
+3) You can have JNOS expire blacklist entries at regular intervals. A new sub
+   command has been added to 'tcp access' :
+
+     tcp access expiry N
+
+   where N is in minutes. If you don't run this, your blacklist will grow and
+   grow and grow (nobody says you have to expire them, but your choice).
+
+4) Example of autoexec.nos configuration for blacklisting with expiry :
+
+     # blacklist must have minimum a 'permit all' entry
+     tcp access permit all
+
+     # blacklist bad logins for 15 minutes (900 seconds)
+     mbox blacklist 900
+
+     # run expiry process every 20 minutes
+     tcp access expiry 20
+
+5) Added some code to validate netrom callbacks before JNOS acts on them. I've
+   discovered that JNOS crashes frequently when one starts tinkering with the
+   netrom parameters. It turns out netrom callbacks disappear quite frequently
+   if you play with the default parameters, but JNOS was not checking for it.
+
+   These validation checks should significantly curb these incidents.
+
+6) Instead of telling me that a particular console command 'takes at least
+   one argument', quit wasting my time and just give me a list of possible
+   arguments. This was driving me nuts for a long time. Not everyone will
+   like it, but I do - '#undef SUBCMD_WASTEFULL_PROMPTING' if you don't.
+
+
+ differences between 2.0j.7q and 2.0j.7p - February 18, 2015
+ -----------------------------------------------------------
+
+ * First of all, my apologies for leaving this so long, I really wanted to
+   include the new 'tcp access' modifications and blacklisting of bad logins,
+   but I'm not happy with the stability and command syntax at this time.
+
+   files changed : mboxcmd.c, smtpserv.c, fbbfwd.c, forward.c, version.c
+
+1) Added 'blacklist' subcommand to 'mbox' console command, allowing sysop to
+   enable or disable the blacklisting of bad logins. I know that contradicts
+   what I just mentioned above, but at this time it simply sets an internal
+   variable, the main blacklist code is still not part of this release.
+
+2) Commented out excessive debugging (JNOS log) in the SMTP code.
+
+3) JNOS can now handle the 'A' and '!' FS response codes (which include file
+   offset information). This is experimental, and difficult to test, so you
+   should be warned - this will likely fail (at worst on a file seek error).
+
+   dofbbrecv() never handled the FB proposal, not sure how that one got missed
+   after all these years. This surfaced as a problem when I ran some forwarding
+   tests with the linFBB software. It's fixed, so using N=1 on the linFBB side
+   along with this fix greatly improves the linFBB forwarding experience.
+
+4) I have noticed proposals are not being uppercased in the reverse forwarding
+   code. I saw this in my JNOS log one day during a 'SP' forward session with
+   another JNOS station. This had to be fixed - can't have JNOS uppercasing a
+   proposal one way, then not doing it the other way. The choice was uppercase
+   to keep in line with the historical usage from years back. This came up in
+   recent discussions on whether MID/BID values should be case sensitive ...
+
+
+ differences between 2.0j.7p and 2.0j.7 - January 29, 2015
+ ---------------------------------------------------------
+
+1) Reverted item number 3) introduced in the previous version 2.0j.7 (below).
+
+   This so called 'fix' was seriously messing up FBB forwarding of messages
+   containing CC recipients, so I had to revert back to the original code.
+
+2) The basic JNOS installer and support files are now part of the JNOS source.
+   (added to support my network based compile/install builder programs)
+
+3) The '+' wildcard for the rewrite file never worked properly, that's fixed.
+   (added february 4, 2015)
+
+
+ differences between 2.0j.7 and 2.0j.6r - November 2, 2014
+ ---------------------------------------------------------
+
+1) For B2F delivery (fbbfwd.c), put in checks for missing email headers. In
+   some cases, the To: and/or From: were missing, causing JNOS to crash !
+
+2) More work on CCLIST issue (mboxmail.c) from 2.0j.5, one should check both
+   the To: and CCLIST, not just the To: when looking for the presence of any
+   external hosts in outgoing messages.
+
+3) Moved the set_index() call for the TO field, from smtpserv.c to index.c, to
+   fix a problem where users were reporting seeing the wrong TO information if
+   they did a LIST command at their mailbox prompt. The index was 'wrong'.
+
+4) The 'm->line' fixed length input buffer for mailbox is one step closer to
+   being replaced with an unlimited length string input function and pointer
+   combination - idea is to eventually do away with the fixed length buffer.
+
+   Added a new module (ufgets.c), code is courtesy of btmills of GitHub, with
+   some modifications to use it as a replacement for mbxrecvline() in the code
+   where any BBS user issues the 'SC' command (mboxmail.c). Problems have been
+   reported where the CCLIST is truncated and/or bleeds into the Subject line.
+
+   This has to do with the way mbxrecvline() uses MBXLINE - using the ufgets()
+   function instead completely fixes the reported problems, and allows for an
+   'unlimited' number of CC recipients to be specified at the BBS prompt, no
+   matter what the value of MBXLINE is.
+
+5) The IGNORE_RIP_TAG option introduced in 2.0j.3 (search this document) was
+   never added to the default config file (config.h.default). This option is
+   somewhat important and should be more visible to people (default #undef).
+
+6) Revamped the nos log functions, and added Bob's (VE3TOK) mods so that you
+   can now specify a single running nos.log, instead of the daily versions,
+   this is not a compile time option, decided to make it runtime instead,
+   the new 'log' command usage is as follows :
+
+     Usage: log file [ nos.log | daily ] THEN log [ on | off]
+            disk logging is ON, logfile type is DDMMMYY (daily)
+
+7) Regarding the rewrite file and matching of wildcards ?, *, and +. It's been
+   noted only the * and + wildcards are providing the $1, $2, etc values, which
+   one can refer to in the second column of a rule. JNOS has never set $1, $2,
+   and so on for the ? wildcard tag. I have modified the code to now do this.
+
+8) A request was made for a way to run a default expire on ALL mailboxes not
+   listed in the 'expire.dat' configuration file. I have added new code which
+   will allow you to do this. Simply add another line to 'expire.dat', but use
+   the '*' character instead of a filename. That will be the default expire.
+
+   If you decide to run a default expire, there may still be areas you do NOT
+   want expiry done on, so an additional feature was added to deal with this
+   very scenario. Any area for which you do NOT want default expiry done can
+   be added to the 'expire.dat' file, with the age value set to -1.
+
+   This feature actually opens up the possibility of using wildcards to expire
+   files that have specific filename patterns, which would require a few more
+   modifications to be made to the code, so for now that is just a thought.
+
+9) Since early 2010, JNOS has been able to make use of RIP broadcasts from the
+   AMPRnet gateways system, to update the ip routing table - an alternative to
+   using the 'encap.txt' file method. Unfortunately, the code changes I did at
+   the time to get this working, created a mutual exclusion of sorts. One could
+   not do both RIPAMPRGW and regular RIP at the same time, it was either, or.
+
+   This is now 'fixed' - you should now be able to use the usual RIP services
+   provided by JNOS, while being able to handle the AMPRnet RIP broadcasts. Of
+   course, you still have to define RIPAMPRGW, and use 'ip upstairs', etc.
+
+
+ differences between 2.0j.6r and 2.0j.6q - July 21, 2014
+ -------------------------------------------------------
+
+1) Fixed a nasty bug, possibly related to the use of UTF-8 in the 'Subject:'
+   field of an email header. I have noticed - a newline character seemingly
+   out of place in the 'Subject:' field, can cause memory to be improperly
+   allocated in the set_index() function, resulting in JNOS crashing.
+
+   This was originally caught during the 'index <mailbox>' command, but the
+   main culprit of our problems occurs when smtpserver() receives an email in
+   which the above 'out of place newline' situation occurs.
+
+   Rsync to your existing source directory, then run these commands :
+
+     rm index.o version.o ; make
+
+
+ differences between 2.0j.6q and 2.0j.6p - July 15, 2014
+ -------------------------------------------------------
+
+1) Accidently introduced a bug when fixing the CCLIST issue in point 9) of the
+   version 2.0j.5 changes. I forgot to allocate an extra byte for a NULL string
+   terminator, and we all know what that can do :) Using the SC command at the
+   BBS prompt would result in JNOS crashing (not on all linux distributions).
+
+   Rsync to your existing source directory, then run these commands :
+
+     rm mboxmail.o version.o ; make
+
+
+ differences between 2.0j.6p and 2.0j.5 - June 29, 2014
+ -----------------------------------------------------
+
+1) A very important fix to fbbfwd.c - an outgoing forward session where you
+   connect using netrom (ie, 'netrom <call>' is used in a forward.bbs entry)
+   could result in JNOS entering a 'race' condition (ie, the CPU usage goes
+   up big time, and JNOS goes into an endless loop, and you have to kill it.
+
+   The fix is actually the reinstatement of the code I had replaced back in
+   October of 2009, a badly thought out idea now that I come to think of it.
+
+   Rsync to your existing source directory, then run these commands :
+
+     rm fbbfwd.o version.o ; make
+
+
+ differences between 2.0j.5 and 2.0j.4 - June 18, 2014
+ -----------------------------------------------------
+
+ * For what it's worth, some of the changes noted here are actually a result of
+   the recent work I've done on my Windows (WIN32) version of JNOS, highlighting
+   at least one benefit of doing cross platform development of any software.
+ 
+1) Fixed a bad mistake in the agwpe_send () function, after receiving a report
+   from Mark (G7LTT) that it was not sending. He later confirmed (as I did) it
+   is now working properly.
+
+2) If you want to allow axudp from ANY source port, then use the value -1 for
+   the optional UDP source port parameter in your axudp attach command. Make
+   sure you tighten up the rules on which IP addresses are allowed - that has
+   to be done at the firewall or ip access level. This 'feature' was added to
+   deal with a situation encountered by Michael (N6MEF) - 2 JNOS systems, both
+   behind a Sonicwall 'router' - UDP unreachable errors w.r.t axudp ports.
+
+3) Improvements (if one wants to call them that) to the INP3 functionality :
+
+     Fixed a bad typo, TT_HORIZON should be 60000, NOT 6000 !
+
+     Added ability to better configure INP3 functionality, sysop needs to be
+     able to maintain a list of INP3 capable stations for which we'll actually
+     use INP3 with, instead of blinding doing INP3 with every netrom interface
+     we have on the system. A new jnos console command added for this :
+
+         usage : inp ifaces *[if1 if2 if3 ... ifN]
+
+     The badly thought out 'vhf' kludge is removed - I had forgot about it.
+
+     Several people have remarked INP3 is very agressive, so I have reduced
+     the value of the ROOT_QUALITY from 254, to 230 as an experiment.
+
+     Added some overflow checks, and warning messages - I still have to figure
+     out how to deal with some of those situations - I don't know right now.
+
+4) A bit of an overhaul to the SNMP service, rewriting portsion of this code
+   has actually helped me to fully understand how SNMP works and some of the
+   fundamental ideas behind it's design. In short, it's up to a querying tool
+   to recognize if the results of an snmpwalk lie outside the area of interest
+   or have crossed a MIB boundary, simple enough, work completed on 04May2014.
+
+   The process name is now 'snmpd', used to be 'SNMP listener'.
+
+   Had to add GetNextRequest PDU, it's fundamental to walk operations.
+
+   Added several more MIBS, so one can now snmpwalk JNOS with any MIB, the
+   worse case scenario is JNOS will return an 'out of bounds' for any item or
+   group of items it can not provide any information for - try these out :
+
+        snmpwalk -v1 -c jnos ve4klm.ampr.org ifName
+        snmpwalk -v1 -c jnos ve4klm.ampr.org ifDesc
+        snmpwalk -v1 -c jnos ve4klm.ampr.org ifInOctets
+        snmpwalk -v1 -c jnos ve4klm.ampr.org ifOutOctets
+
+   Finally, you can now configure your MRTG using ifaceName instead of the
+   offset, meaning if you add or remove a JNOS interface, you no longer have
+   to reindex your iface entries in the MRTG config file. For instance :
+
+        Target[encap]: #encap:jnos@192.168.1.201:
+
+   instead of  :
+
+        Target[encap]: 14:jnos@192.168.1.201:
+
+   See how the index '14' is replaced by the iface name 'encap'. You must
+   use the '#' character, which tells MRTG it is using iface name instead.
+
+   Important - make sure you add the line 'NoMib2:yes' to your mrtg.cfg !!!
+
+5) A technical fix that most people may not even notice. For B2F forwarding, I
+   have added some code from Lantz to better format the 'From: ' field in the
+   message header. Up till now, nowhere in JNOS did one ever check for " or <
+   delimiters - the assumption being that the 'From:' field would always be of
+   the simplistic form, 'name@company.com' - not true in todays day and age.
+
+   Also to stay consistent with 'From' we get from older style FBB systems, I
+   now strip off the '%' portion, like I already do for the '@' portion.
+
+6) Fixed a big problem which surfaced whenever JNOS tried to forward to another
+   station where JNOS had to first connect to an Xnet node, and then connect to
+   the other station from there. JNOS would receive the Xnet prompt, but then
+   just sit there and eventually timeout. The problem too, was nothing would
+   show up in the JNOS log, and nobody would know why this was happening.
+
+   It turns out the Xnet station in question did not send a CR at the end of
+   it's prompt, which the JNOS code depends on. I have modified the forwarding
+   code and script to accomodate the lack of a CR in the prompt. One should now
+   be able to forward without any issues. I also added a bit more debugging to
+   the JNOS log to give the sysop a better idea of what's going on.
+
+7) Added basic functionality to capture WINMOR calls heard on HF, so one can
+   now display a 'heard list' of sorts, by using a new jnos console command :
+
+       hfdd heard
+
+   Even though it's a general hfdd command, only WINMOR is tracked right now.
+
+   Also fixed a problem with the general hfdd connect flag and how it was being
+   set incorrectly on a disconnect state, causing inconsistent operations.
+
+8) Big improvement to the HFDD code in general - waiting for an HFDD connection
+   to terminate is very important in how a forwarding session ends. This never
+   did work properly. For instance, forwarding sessions (winmor, pactor) would
+   either hang, or be cutoff before they could finish up properly, resulting in
+   JNOS itself hanging or worse, crashing, and things just got very bad :(
+
+   This latest code actually waits (up to 3 minutes) for a disconnect, and my
+   most recent tests show this is working so much better then before. I've had
+   several great WINMOR sessions to test this out with (with live HF systems),
+   and I think it is a major improvement to the overal hfdd code.
+
+9) A new jnos console command to configure how 'To:' is set in the mail hdr :
+
+       mbox rewriteToHdr [ on | off ]
+
+   Since me maintaining JNOS and before 2004, JNOS has always set the TO field
+   in any message header, to be the original (pre rewrite file) value. I added
+   this option so that people can have a post rewrite file value instead, sort
+   of requested by Michael (N6MEF) when he 'discovered' a CCLIST issue, which
+   required a bit of reorganization and some new code to be put into place.
+
+   If set, this option forces the mail header to be set from 'm->to', instead
+   of the default 'm->origto' (if that value is actually set). The default is
+   no rewrite of the TO header (to stay consistent with older JNOS versions).
+
+   Fixed a CCLIST issue where if one is sending to both local and internet
+   email addresses at the same time (CC one or more, TO the other), then the
+   external smtp service getting the message sees a local address (ie, ve4klm)
+   without a host name, and automatically appends the hostname of the domain
+   being handled by that external smtp service. The end result is one or more
+   incorrect email addresses showing up in the headers of mail recipients.
+
+10) Outgoing ax25 packets for kiss and/or slip type devices are now recorded
+    properly for the SNMP server. I forgot to include the code way back when.
+
+11) Checking for NULL ax25 callback structure in axip code to prevent crash.
+
+12) Added some socket validity checks, hopefully this reduces the occurance of
+    the infamous JNOS crash which happens quite frequency when a user uses the
+    jnos console command, 'mbox reset <call>'. Ironically, I discovered these
+    validity situations while working on my windows version of JNOS 2.0 - the
+    visual studio debugger nailed these situations instantly and accurately.
+
+13) Adding support to MultiPSK driver for incoming connects, this is not quite
+    complete, still experimental. A new function to compare strings but ignore
+    the white space while doing so. A new function to send command directives
+    to the MultiPSK software modem. JNOS will now look for incoming connects
+    on MultiPSK and launch a mailbox if a connect is 'detected'. The idea is
+    to be able to connect to JNOS via 'any' keyboard mode.
+
+14) Bumped up stack size for the telnet MBOX server, was 2K, it's now 8K !
+
+15) A new TCP watch dog of sorts, I have noticed a lot of SYN attacks towards
+    various ports on JNOS, and so this is an attempt to reset TCB entries stuck
+    in a SYN RECEIVED or FIN WAIT state for longer then they 'should be'. The
+    question is - what is an acceptable amount of time to wait for ? The idea
+    of this is to make sure JNOS does not 'run out out resources'. I actively
+    use this feature on my production system and it helps by the looks of it.
+
+    This is experimental, the new jnos console command is :
+
+        tcp watch <interval in seconds>
+
+    Another suggestion is to use existing jnos console commands like these :
+
+        mbox tdisc 120
+        smtp tdisc 120
+
+    to make sure 'broken' or 'malicious' login and smtp attempts are not left
+    sitting there forever (which can contribute to JNOS using up resources).
+
+16) I have been experimenting with limiting the number of processes spawned by
+    JNOS when it receives a flurry of requests for a particular TCP service,
+    the idea (again) being to protect JNOS from running out of resources. It
+    is experimental, is part of this release, but not defined (MAXTASKS) at
+    this time, needs more work - using pop3serv() as the 'test subject' :)
+
+17) Other minor things, cleaning up debugs, cleaning up JNOS log entries, etc.
+
+ introduced 2.0j.X on November 12, 2013
+ --------------------------------------
+
+1) Version 2.0j.X is 'on the edge', it is from my development system, and has
+   the potential to change at moments notice. I use it to get updates out to
+   specific people who are helping me fix bugs or test software changes.
+
+
+ differences between 2.0j.4 and 2.0j.3 - September 14, 2013
+ ----------------------------------------------------------
+
+1) JNOS can finally handle incoming B1F protocol, as well as the 'H', 'R',
+   and 'E' values that might show up in an FS response from a remote system.
+   Sorry, but offset values are not supported at this time, quite frankly I
+   have never seen one (yet), and if one does show up JNOS will most likely
+   report a protocol error. IF this happens, I ask that you notify me, and
+   I will deal with it then. This fix means you will likely never need to
+   use the 'mbox nob2f <call>' command again. There is no mbox fbb level
+   implemented (yet) for JNOS to prompt B1F when remote systems connect.
+
+   modified files : fbbfwd.c, forward.c, mailbox.[ch], mboxmail.c
+
+   JNOS never could handle an SID specifying the B1F protocol, but it was
+   never a problem because for incoming connects JNOS would always present
+   the remote client with BF, and for outgoing connects even to B1F capable
+   systems like FBB, JNOS could only go as high as BF, so all was good.
+
+   Until I introduced B2F ! Without realizing it at the time, any B1F capable
+   system (like FBB) that connected to a B2F capable JNOS would respond back
+   with a B1F, which JNOS would mistakenly treat as a BF. They are not the
+   same (B1F contains an additional checksum). A typical symptom of this was
+   JNOS going into a high CPU loop, generating massive temporary files which
+   never seemed to stop growing, and JNOS simply slowing down (hanging).
+
+   I can't even recall if the problem existed the other way. Anyways the
+   'mbox nob2f <callsign>' command was created to try and deal with this
+   issue, but I suspect many people were not aware of it, even though it
+   is mentioned in this file - differences between 2.0j and 2.0i, back
+   on March 20, 2012, take a look at point 15) under that section.
+
+
+ differences between 2.0j.3 and 2.0j.2 - August 6, 2013
+ ------------------------------------------------------
+
+1) Added code to expire messages dated in the future - however, by default it
+   will not do so unless you enable it using a newly added 'future' argument to
+   the existing 'expire' command. The new syntax for 'expire' is as follows :
+
+      expire [ <interval in hours> | now | future [ yes | no ] ]
+
+   modified file : expire.c
+
+2) Specific to Winlink, added code such that if a BBS user prepends 'smtp:' to
+   the recipient of a message when using the SP command, JNOS sets up the FROM
+   and MSGID mail headers to ensure Winlink delivers the email to 3rd parties.
+
+   For example :
+
+     sp smtp:maiko@pcs.mb.ca
+
+   This 'feature' requires an entry in the rewrite file. Please refer to the
+   brand new documentation (under practical guide) on how to setup JNOS with
+   the Winlink CMS Telnet servers.
+
+   modified file : mboxmail.c
+
+3) JNOS ignores RIP routes 'tagged' other then IPIP, but there may be cases
+   where the tag is not being set properly by the system originating the RIP
+   broadcasts, resulting in JNOS ignoring all the RIP route broadcasts. If
+   this is the case then add the following to config.h, remove rip.o, and
+   recompile JNOS using the 'make' command :
+
+     #define IGNORE_RIP_TAG	/* Gus (I0OJJ) this one's for you :) */
+
+   modified file : rip.c
+
+4) Specific to Multipsk, I am working on code that will allow any HF user to
+   connect to JNOS using ANY keyboard mode supported by Multipsk, even morse
+   code. This is very experimental, and a bit radical I think. Station costs
+   and simplicity are the motivating factors behind my desire to try it out.
+
+   Imagine if QRP or weak signal digital stations could connect to JNOS using
+   cw, mfsk16, or digital modes, and read or send simple messages to users on
+   the internet or other systems. It may be slow, but accessible to most.
+
+   Multipsk is a great piece of software, the interface (API) supports this.
+
+   The original idea actually came to me when I was frustrated with my mobile
+   packet in my car only working up to 5 miles away. We no longer have packet
+   infrastructure around Winnipeg anymore, so I wonder if perhaps weak signal
+   is the way to go. I'm sure I can get much better then 5 miles, but I have
+   to write this code first, then test it and see how far I can push it.
+
+   Note : I am not just targeting the HF band here, VHF/UHF weak signal ?
+
+   modified file : multipsk.c        (ongoing changes)
+
+5) My development version of JNOS is using dlmalloc (version 2.8.0 by Doug Lea)
+   for over a year now, instead of the malloc that comes with GNU. It's working
+   quite well, but is NOT part of this release - if you are interested, let me
+   know, and I'll pass on the code (it's very simple to integrate into JNOS).
+
+6) I have been experimenting with 'speeding up the tick', simply by changing
+   the value of MTICK in timer.h from 55 to no less then 10 - below that and
+   JNOS starts to 'fall apart'. Quite some time ago I rewrote the TICK code,
+   to see how much further I could take this, but it got out of control, so I
+   shelved the idea. I might go back to it again sometime in the future.
+
+   If you want to enable the timer.h change, add the following to config.h :
+
+     #define SPEED_UP_TICK	/* Gus (I0OJJ) this one's for you :) */
+
+   then remove a few objects files, and recompile JNOS as follows :
+
+     rm domain.o main.o rspf.o timer.o unix.o
+     make
+
+   modified file : timer.h
+
+7) I have been experimenting with the JNOS kernel, trying to impose the concept
+   of process priority on the JNOS user space threads, results are not great at
+   this point, so it is NOT part of this release, and remains experimental.
+
+
+ differences between 2.0j.2 and 2.0j.1 - April 29, 2012
+ ------------------------------------------------------
+
+1) Fixed another bug in the white page code, see following for details :
+
+      www.langelaar.net/projects/jnos2/downloads/linux/patch_20j2.txt
+      www.langelaar.net/projects/jnos2/downloads/linux/patch_20j2.tar
+
+   Important : Apply this patch only on top of 2.0j.1 !
+
+
+ differences between 2.0j.1 and 2.0j - April 26, 2012
+ ----------------------------------------------------
+
+1) Fixed a serious bug in the white page code, see following for details :
+
+      www.langelaar.net/projects/jnos2/downloads/linux/patch_20j1.txt
+      www.langelaar.net/projects/jnos2/downloads/linux/patch_20j1.tar
+
+   Important : Apply this patch only on top of 2.0j !
+
+   Also available is brand new (quite detailed and absolutely up to date
+   with the latest efforts) documentation of the JNOS white page support.
+
+      www.langelaar.net/projects/jnos2/documents/practical/wpages
+
+
+ differences between 2.0j and 2.0i - March 20, 2012
+ --------------------------------------------------
+
+1) Decided it was time to make a new tar file (new official release). It has
+   been over a year, so time to put everything into one easy download again.
+
+   Included is the beginnings of 'White Pages' support, the database portion
+   of the code is taken from Lantz TNOS 2.40 source code. I thought it makes
+   sense to use his code and give it a try - no point re-inventing wheels.
+
+2) I have defined a standard on how JNOS version numbers are to be done :
+
+   As of now, the version of JNOS 2.0 will be defined as follows :
+  
+     JNOS 2.0x.n
+  
+   where 'x' is a small LETTER, and 'n' is a sequence NUMBER. For a new
+   official release (read below), there is NO sequence number present.
+  
+   The small LETTER will be bumped up each time I decide to put out a new
+   tar file (a new official release) for those who do not (or can not) use
+   the RSYNC protocol to get the official source code off my system.
+  
+   Any changes (no matter how small) made to an official release must have
+   a sequence NUMBER included in the version. Further more, this NUMBER must
+   be incremented each time a change is made to any of the JNOS 2.0 source.
+   
+   This new standard will be strongly adhered to from this point on !
+
+ *** February 27, 2012 ***
+
+3) New console command, 'snmp', to display 'interface # to name' mappings, so
+   one can easier configure their mrtg.cfg file. Before, you had to guess or
+   count your autoexec.nos attaches to find out the interface # to use. Now
+   you can dump it to your screen, which should make your life easier.
+
+   It would be nice if one could use the port name (ie, #tun0) in mrtg.cfg
+   instead of an interface #, but it's too much trouble (at this time) to
+   implement the necessary functionality into the JNOS SNMPD code.
+
+4) Big news - new TCP/IP client for AGW Packet Engine !!!
+
+   Check under documents / online practical guide / soundmodems - link is :
+
+  http://www.langelaar.net/projects/jnos2/documents/practical/#softwaremodems
+
+5) Confirmed that Thomas Sailer's soundmodem still works with JNOS - It works
+   very well - as a matter of fact I used two JNOS 2.0 systems talking to each
+   other, one was connected to AGW PE running on a MS Vista PC, the other using
+   the latest soundmodem-0.16 driver. Radio channels were simulated using good
+   old fashioned desktop speakers and microphones.
+
+   I compiled soundmodem from source, which is available at this site below :
+
+      http://www.baycom.org/~tom/ham/soundmodem/
+
+ *** January 30, 2012 ***
+
+6) Sometimes JNOS is run in an xterm window, instead of on a linux console. If
+   the xterm window is resized, a 'NOS PANIC: Lost keyboard' error will result
+   in JNOS, and it will kill itself in the process.
+
+   I have created a fix which *seems* to handle the situation in a much better
+   manner now. Instead of terminating, JNOS will keep running and simply adjust
+   to the new number of columns and rows. The event is now logged to the JNOS
+   log, not to the screen as before. Please report any issues - thank you.
+
+7) It was reported that history recall using the UP and DOWN arrow keys was
+   not working. In fact, it does work, but is dependant on the value of the
+   TERM environment variable. It works perfectly fine if 'TERM=linux', but
+   for cases where 'TERM=xterm', JNOS does not have the code to be able to
+   handle the 3 byte key sequence sent to it by the linux kernel.
+
+   I have added a mapping function to handle this, so you should now be able
+   to use the UP and DOWN arrow keys for history recall, for JNOS running in
+   an xterm or other terminal type using the ANSI escape sequences.
+
+ *** December 17, 2011 ***
+
+8) Better support for PTY98 (/dev/ptmx, /dev/pts/N) pseudo devices. Bob (VE3TOK)
+   asked for this a long time ago, so I figured I better get it implemented.
+
+   Note : Technically one can use the new jnos 'attach baycom' and go direct to
+   a kernel KISS type interface, meaning you don't need to run an intermediary
+   program (kissattach or net2kiss) anymore. Try it, let me know how it works.
+
+   COMPILE : Make sure '#define JNOSPTY98' exists in your config.h file.
+
+   The best way for me to show how this feature works is by example. One way of
+   getting JNOS to use a linux AX25 device is through the 'kissattach' program,
+   but get the one from F6BVP (it has a mod that actually outputs the name of
+   the slave device after you run the program). The stock ax25 utilities will
+   not tell you that (you have to look for a new /dev/pts/N to appear then).
+
+      kissattach /dev/ptmx radio > /jnos/spool/ptmx_radio.cfg
+
+   The issue here is you don't know what slave device you will get, it could
+   change each time you run kissattach, there may be no consistent device name
+   for you to depend on when running 'attach asy' in the JNOS autoexec.nos.
+
+   Now in JNOS (autoexec.nos), suppose we have this entry below :
+
+      attach asy ptmx_radio - ax25 ax0 4096 256 9600
+
+   I have added a feature where if the 3rd argument starts with 'ptmx_', then
+   JNOS will look for a corresponding *.cfg file, and extract the slave device
+   name from it, and then attach using that instead of the original argument.
+
+9) New SMTP gateway options, the old way just didn't work for alot of people,
+   it would first try to deliver direct to a host, then to MX if enabled, and
+   finally to an smtp gateway (as a last resort) if you have one configured.
+
+   COMPILE : Make sure '#define SGW_EXCEPTIONS' exists in your config.h file.
+
+   Two (2) new subcommands have been added to the smtp gateway syntax :
+
+       smtp ga mode [original|force|first|last]
+
+       smtp ga exception add ip mask
+       smtp ga exception delete ip mask
+       smtp ga exception  (to list)
+
+   The original way to define the gateway has not changed :
+
+       smtp ga [A.B.C.D | none]
+
+   If mode is not configured, then JNOS will function the old way.
+
+   The 'force' mode sends ALL smtp requests direct to the gateway,
+   nothing is sent direct to a host, and no MX records are tried.
+
+   The 'first' mode does the same, but allows for exceptions, of
+   which are configured using the 'smtp ga exception' subcommand.
+
+   Exceptions basically follow the old way, BUT the gateway will
+   not be attempted as a last resort if all else fails.
+
+   Why have a 'force' ? Perhaps you are running 'first' with a
+   list of exceptions, and for some reason you need to force all
+   traffic to a gateway without having to reconfigure everything.
+
+   The 'last' option does not do anything, and 'original' simply
+   switches back to old way - I doubt anyone will use those two.
+
+   Example (this is what I am currently running on my system) :
+
+    smtp ga A.B.C.D
+
+    smtp t4 60          # 1 minute timeout
+
+    smtp ga mode first
+
+    # send everything to gateway except 44 stations, they go direct
+    smtp ga exception add 44.0.0.0 0xff000000
+
+    # other exceptions (examples) - you can have as many as you want
+    smtp ga exception add E.F.G.0  0xffffff00
+    smtp ga exception add X.Y.Z.Z  0xffffffff
+
+   Alot of this functionality actually comes from the 'SMTP Deny Relay
+   Exceptions' code (SDRE), which I wrote some time ago. I was able to
+   use the same code for this enhancement (with some restructing).
+
+ *** October 2, 2011 ***
+
+10) I am once again working on the INP support, which I last worked on quite a
+    few years ago (as far back as 2005). I've been asked to make it work again,
+    so it's back on the plate - a READ ONLY version of INP is now available.
+
+    Please refer to the following NEW document which details the work so far :
+
+      http://www.langelaar.net/projects/jnos2/documents/inp2011.txt
+
+11) Fixed up SNMP, there were no incoming counts for the axip/axudp interfaces,
+    and JNOS now tracks counts for the netrom interface. Even though all of the
+    changes were quite trivial, I spent two days on it - the new INP code seems
+    to have pushed the network() daemon stack size to the limit - even 1 or 2
+    lines of new SNMP code was enough to push JNOS into a stack overflow. For
+    example, if netrom debug was on, any incoming RIF frames would crash JNOS
+    when it tried to write to the logfile. I have bumped up the stack size of
+    the network() daemon to 4096 if INP2011 is defined - problem solved !
+
+ *** April 28th and before ***
+
+12) Looks like I forgot to put in the rewrite code for B2F forwarding, noticed
+    that bulletins were not going to the proper areas. Thank you to Gus (I0OJJ)
+    for running forwarding tests with my system, and noticing this problem. As
+    well, corrected a 'problem' where the 'From: ' header in messages coming in
+    from a forward session had too much information (suffix of origbbs). I did
+    this to be consistent with regular BF forwarding (FA proposal) format. We
+    will have to see if anyone complains about this one.
+
+13) Started work on a new SNMP server for JNOS in mid December, the idea being
+    that I want to use MRTG graphs to directly monitor my JNOS interfaces, and
+    see what kind of traffic I am getting. By the start of February, I finally
+    got something that works very much to my expectations. Check the practical
+    user guide for full details.
+
+    Warning - you MUST do a MASS compile, since the 'iface' structure has been
+    altered from previous versions - I have added additional member variables,
+    and the code will change over the next while as I secure and fine tune it.
+
+14) It would appear that B2F forwarding between two JNOS 2.0i systems was not
+    working - messages were always rejected. This is fixed, the FA proposal hack
+    usually seen in the log is now gone, and the FC proposal is properly dealt
+    with now. It's pretty cool to watch two JNOS systems B2F forwarding.
+
+15) If your JNOS is B2F enabled, any forwarding partners connecting to you and
+    showing a SID of B1F are now immediately disconnected to prevent possible
+    damage to user mailbox files and keep JNOS 2.0i stable. There is an issue
+    with how JNOS treats B1F (it doesn't), but this issue is only relevant if
+    you are running B2F (mbox fbb 3). The JNOS log will tell you how to get
+    around the problem for now - ie, the 'mbox nob2f <call>' solution.
+
+16) I have added a new 'nos_log_peerless()' function, so I can log to the JNOS
+    log for UDP servers like the new snmpd.c just added. I never really liked
+    the fact that the regular log always displayed a '-', when I wanted to see
+    an <ip address:port> instead. The regular log uses 'j2getpeername()' to get
+    that information, but it fails for sockets using SOCK_DGRAM mode. Also, if
+    the regular log is passed -1 for socket, there's no point going through the
+    entire user socket list when we know it won't be found - wastes cpu/time.
+
+17) Fixed up the domain name resolving code for axudp and axip interfaces that
+    have a domain name configured for their remote host. Up till now, if JNOS
+    was not able to resolve the domain name of the remote host at the time of
+    the attach, the interface would not get created. No more - the interface
+    will now be created, even if the remote host ip address can not be found,
+    the idea being that eventually it will get resolved - in the meantime,
+    the interface will just get ignored till it becomes active.
+
+    This new method gives a consistent order to the JNOS interfaces, something
+    which the recent SNMPD + MRTG work relies quite heavily on. Lastly, there's
+    no more need to use the 'at' command to attach the 'dyndns' type interfaces
+    a few minutes after JNOS has finished loading the autoexec.nos file. Just
+    attach them like you would any other interface in your autoexec.nos file.
+
+18) JNOS will now properly link if you '#undef WINMOR', previously the make
+    process would continue to look for winmor function references, and fail.
+
+
+differences between JNOS 2.0i and 2.0h - November 23, 2010
+----------------------------------------------------------
+
+1) Some people like to customize their 'config.h' file. There have been some
+   cases where people updated their source (mostly via the rsync server), only
+   to have their customized 'config.h' file wiped out. For that reason alone,
+   from this point on, JNOS 2.0 source will no longer ship with a 'config.h',
+   instead it will contain a file called 'config.h.default'.
+
+   The makefile checks for 'config.h'. If it does not exist (as is the case of
+   a fresh install), it will first copy 'config.h.default' to 'config.h', then
+   do the compile. If you want to customize 'config.h' before you do a compile
+   on a fresh install, run the command 'make defconfig' first, which creates
+   the 'config.h', then customize (edit) it, then run 'make' after that, to
+   do the actual compile. Also note, 'hardware.h' is no more - it's gone !
+
+   If you choose to use a config.h from a previous JNOS compile, you may want
+   to run a diff between it and config.h.default to see if you are missing out
+   on any new features. Technically speaking, you should be able to use the
+   original JNOS (linux) 1.11f config.h file, but I have not tried that.
+
+   Added a few fixes and mods from K6FSH, check 'readme.k6fsh' for details. I
+   have put his original patch file and docs in a 'k6fsh' subdirectory.
+
+2) If you have the Intel Compiler (icc) Version 11.0, it will compile JNOS too,
+   all you need to do is change the following in the makefile :
+
+      change 'CC = gcc' to 'CC = icc'
+
+      comment out 'DEBUG = -g3
+
+   The '-g3' option can cause an unresolved reference at link time. This is a
+   known problem due to a bug in the kernel headers, not the compiler. I did
+   this on a Scientific Linux 5.4 system (x86_64) - it runs fine, tun works,
+   you will probably see a fair amount of compiler warnings - no worries.
+
+3) Fixed the famous '25 day negative timer' issue. Around the 24 to 25 day
+   mark, timers would suddenly stop working, showing negative values, etc.
+
+   Thanks go out to Jack (AA6HF) for pushing me on this and for testing.
+
+4) New feature, added syncing (flushing) of trace log files. This is a feature
+   which should have been added a long time ago. The problem with tracing to a
+   file has always been that the operating system only flushes to disk every so
+   often (which makes sense of course), but if one wants to depend on the file
+   for realtime monitoring, it's not practical. By syncing the log file every
+   few seconds or milliseconds (user selectable), it now becomes practical.
+
+   The 'trace' command now features an extra parameter (in milliseconds), for
+   example, to trace port ax0 to file, and flush it to disk every 1/2 second :
+
+      trace ax0 0x211 ax0.log 500
+
+   A big thanks to Michael (N6MEF) for pushing me on this, and for testing.
+
+   Warning - you MUST do a MASS compile, since the 'iface' structure has been
+   altered from previous versions - I have added additional member variables.
+
+5) Interface names (not descriptions) can now be any length. One could always
+   create interfaces with long names, but they would not work (port could not
+   be found, or error 22, etc). This required redefinition of the sockaddr_ax
+   structure - look for '#ifdef JNOS20_SOCKADDR_AX' in the code if curious.
+
+6) Added callsign validation for the web (browser) based user mailbox. I forgot
+   to add it, and was seeing garbage logins from time to time. Now only *valid*
+   callsigns will be accepted when users try to login via the browser. Session
+   control code has also been substantially improved. In the original version,
+   simple internet probes or DOS attacks quickly max'd out available sessions.
+
+   New command :
+
+      hvs
+
+7) JNOS is able to B2F forward with an RMS Packet Node. I'm quite happy with
+   how well it is working, so much that I now do hourly connects to a nearby
+   RMS Packet Node to check for any mail destined to VE4KLM from Winlink, or
+   if I have messages destined to preconfigured users on the Winlink system.
+
+8) Experimental interface to another PC running WINMOR Sound Card Modem. Spent
+   a few months on this starting in April 2010. During the course of this work,
+   some major refinements were made to the B2F code. My remote test system was
+   another PC running both RMS Express + WINMOR Sound Card Modem. JNOS talked
+   to it via audio cables, speakers, and microphone - simulated RF channel :)
+
+   New commands :
+
+      hfdd ip [ip address of tnc]*
+
+   RMS Express is now able to connect to JNOS and pick up messages, as well as
+   send us messages (with attachments) during the same forwarding session. This
+   should still be considered experimental - alot more testing, particularly
+   exception testing, still needs to be done.
+
+   The WINMOR 'define' is now in 'config.h.default', used to be in 'makefile'.
+
+9) More refinements to the B2F and general FBB forwarding code. Uncompressed
+   and Compressed size values in outgoing FC proposals are no longer faked out,
+   and a proper checksum is now appended to any outgoing F> messages. The fake
+   values and missing checksum would result in RMS Express crashing each time.
+   
+   Here's another good one - code I wrote in 2005 to disable FBBCMP after an
+   hfdd_connect() actually contributed to a whole slew of problems with the B2F
+   forwarding code. I have since removed the code, solving several key issues.
+
+   It would appear that JNOS - even before version 1.11f - has been replying to
+   an incoming FQ with it's own outgoing FQ. I don't believe that is correct,
+   so I have removed that function. Not sure if it will fix anything or not. I
+   would guess having the additional FQ could disrupt a forwarding session in
+   certain cases, but that I don't know at this time.
+
+10) JNOS can now use RIP broadcasts from the AMPRnet gateways system, instead
+    of the 'encap.txt' file, to update the ip routing table. The RIP stuff has
+    been available since early 2010. It's an alternative, not a replacement.
+
+    New commands :
+
+      ip upstairs [multicast ip address]
+
+11) A BBS user can now connect to a remote station without having their SSID
+    inverted. Instead of CONNECT, they can use the new CONNISC command. Same
+    syntax as the CONNECT command. I did it mostly to ensure the Winlink RMS
+    Packet node uses the *proper* callsign when logging into Winlink to check
+    for the BBS users messages - CALL and CALL-15 are two different users !
+
+    New command :
+
+      connisc
+
+12) More cleanup of main log file, more 64 bit compatibility changes (nothing
+    too serious, just want to make sure stuff is done right), and fix compiler
+    warnings on various platforms (not just slackware or redhat derivatives).
+
+13) The 'available memory' and 'core memory left' information has been removed
+    from all the various stats displays, mostly for technical reasons. Available
+    memory logged when JNOS first starts up is far from accurate anyways, and I
+    have never found this information to be terribly useful on linux versions.
+
+    Note : This *might* affect scripts you have that depend on stats info.
+
+14) JNOS can now run as a daemon (no keyboard, no (n)curses, no console), all
+    you need to do is '#define HEADLESS' near the top of your config.h file,
+    and do a 'make clean', then 'make'. I should provide a separate makefile
+    for this that has NO references to the CURSES stuff - will do so later.
+
+15) The INFO command was never really updated to reflect all the stuff I've
+    added over the years since the JNOS 2.0 project started. I'll try and do
+    better in keeping the 'version.c' file uptodate. This is ongoing ...
+
+16) Got rid of the '-more-' prompt when a mailbox user logs in through their
+    web browser and tries to list or read long messages. There is no point in
+    having a prompt with a browser interface. It is a big pain in the neck.
+
+    Thank you to Gustavo (I0OJJ) for his perseverance on this issue.
+
+17) Fixed a problem reported by Robert (KD1ZD) where JNOS would crash when
+    trying to get the mailbox name (mbx_getname). The code was not checking
+    to make sure a connection actually existed before moving on. The code
+    will now log a message 'connection never completed' if this happens.
+
+
+differences between JNOS 2.0h and 2.0g - December 6, 2009
+---------------------------------------------------------
+
+1) Time to turn the latest beta into an official version - JNOS 2.0h 
+
+   The uptime on my 32 bit test system (pentium 100, x86, Slackware (9.1), uses
+   a baycom board for RF port) has exceeded 31 days, and is very stable, lots of
+   forwarding and smtp going on to test it. I'm very comfortable with it.
+
+   The uptime on my 64 bit test system (optiplex 330, x86_64, Arch (aug/2009),
+   uses a kiss enabled PacComm TINY-2 MK-2 for RF port) has exceeded 18 days,
+   and also seems quite stable, with lots of forwarding and smtp going on.
+
+2) This release is supposed to be 64 bit compatible. In other words, it does
+   not care if the linux box you are using is x86 or x86_64 architecture. It
+   does not care if you use Slackware 9.1, Arch 2009, or Fedora Core 11.
+
+3) WARNING - IF you are migrating a JNOS installation from a 32 bit system. In
+   other words, if you are copying /jnos from your 32 bit environment to run it
+   in your new 64 bit environment, you MUST reindex your mail/spool files !!!
+
+   One way to do this is to run jnos with the -i option. You only have to do
+   it once. This is very important to do. The *.IND files are binary files,
+   and are platform dependent, so your 32 bit index files will *seem* corrupt
+   and do all sorts of strange things, possibly hanging and/or crashing JNOS
+   in the process.
+
+   I had hoped to make the index files platform independent, but that will have
+   to wait for a subsequent release. So for now, please REINDEX your files !!!
+
+4) Big new feature, web (browser) based user mailbox. Users can now use their
+   favorite web browser to access the JNOS 2.0 BBS. It has the exact same look
+   and feel of a telnet or ax25 connect, but you use your web browser intead.
+
+5) Otherwise, no new features have been added. Some entries in the JNOS log
+   have been cleaned up a bit, for instance the dyndns processing for axudp
+   and axip interfaces has been minimalized to just a one line entry.
+
+6) NOTE - JNOS 2.0h compiles fine with the *shipped* 'config.h' file ...
+
+   IF you decide to edit config.h to suit your own needs, you *might* get
+   compile errors. I can not possibily test all the different combinations
+   of options in config.h, so there is always the chance that you may run
+   into problems. IF so, please contact me - maiko@pcs.mb.ca - to fix it.
+
+
+differences between JNOS 2.0g and 2.0f - May 26, 2009
+-----------------------------------------------------
+
+1) Time to put out another official release, it's been well over a year
+   since the last one. I really need (want) to get 64 bit compatibility
+   completed. Having an official release (instead of ongoing betas) will
+   make it easier for me to do the work and manage the changes.
+
+   In other words - JNOS 2.0 is still not 64 bit compatible !
+
+   I have compiled and run JNOS 2.0 on a Dell Optiplex 745 (x86_64) machine
+   running Scientific Linux 5.3, but things do not behave properly, and it
+   looks like the compile is now a 64 bit thing.
+
+   Earlier versions of Scientific Linux did not give me these problem. If you
+   run into the same problem that I did, you can try to add the '-m32' option
+   to the gcc command, which forces applications to compile in 32 bit mode.
+
+   You will need to install gcc-multilib, or the equivalent for your O/S, but
+   be warned. In the case of Scientific Linux 5.3, installing 32 bit support
+   for gcc, glibc, etc is very difficult - a pain, and possibly impossible!
+ 
+2) Support for the B2F forwarding protocol, including attachments.
+
+   Important - B2F support is #undef'd in the config.h file distributed with
+   this release, since most JNOS systems will never interact with Airmail or
+   Winlink, and using B2F between 2 jnos systems likely is of no benefit.
+
+3) A B2F exclusion list for stations that can't handle B2F forwarding.
+
+4) Support for 'Y','N', and 'L' codes in responses to FBB proposals, since
+   previously JNOS only supported the original set of '+', '-', and '='.
+
+5) Properly handle telnet (internet access) connections from Airmail clients.
+
+6) Created an exception (SDRE) list for 'SMTP DENY RELAY' - very useful !
+
+   Added a new 'NoRelay' string for when JNOS sends a 'DENY RELAY' response,
+   which replaces the use of the 'Unknown' string used prior to this, giving
+   a more accurate indication of the situation, instead of confusing users.
+
+7) Included mods by N8CML (Ronald Schubot) - added new routines to properly
+   remove dynamic gateway entries, something I failed to address when I had
+   originally wrote the RTDYNGWROUTE code.
+
+8) Direct BAYCOM driver (linux only) - NET2KISS and PSEUDO-TTY are no longer
+   needed for JNOS to talk to a Baycom Board - we now go direct to kernel !
+
+   The baycom support is #undef'd in the config.h file distributed with this
+   release, since it requires the presence of kernel headers and source, as
+   well as baycom kernel module support. I developed this on a Slackware 9.1
+   system, which came with all of that - it runs very nicely on my system.
+
+9) MultiPsk support - JNOS can now connect to MultiPsk (tcp/ip server), and
+   use MultiPsk as a digital modem - at this time, for packet (AX25) only.
+
+10) New Hostmode (PACTOR) driver for the PK-232MBX (pakratt 232) AEA modem,
+    including broadcast of FEC (cq cq cq de call call call) text.
+
+11) Two critical fixes to the HFDD code, something that has plagued me ever
+     since I started the HFDD type of interface. This is VERY significant !
+
+   a) If you attach any HFDD type interface to JNOS (even if you don't use
+      it - just attaching it), chances are smtp would crash each time it was
+      required. In later betas, the crash would be replaced with a warning
+      to the log, and your smtp queue would simply grow, nothing would ever
+      get delivered, until you restarted JNOS without the HFDD interface.
+
+      Any code that attaches ANY interface, must use 'setencap()' so that
+      the tcp parameters are properly initialized. Failure to do so causes
+      a crash in the tcpuser.c module.
+
+   b) Figured out why HF sessions with Airmail on ANY type of HF modem would
+      disconnect a bit too early after forwarding was done, causing Airmail
+      to chirp away for minutes, tying up the frequency. This is a HUGE fix,
+      the final 'FQ' from JNOS now gets sent to Airmail, and it now sees a
+      proper FBB disconnect request, and shuts down PACTOR properly !
+
+12) Some new designs in the HFDD code for more reliable data exchange with
+    the HF modems. Some of it is just being used with the new PK232 hostmode
+    driver, looks promising - will eventually make it to the other HF modems.
+
+13) NOSaprs is now version 2.0g - fixed a bug where compressed data was not
+    being properly validated and therefore getting trashed. NOSaprs can now
+    gate OBJECTS to rf - new 'obj2fr' callsign list added. Finally, now using
+    'callcheck()' instead of 'setcall()' to better determine whether an APRS
+    recipient is an actual HAM callsign, or just another bulletin.
+
+14) New Mailbox (MBX) logging - better consistency logging MBOX activities.
+
+15) Notification (user customizable shell scripts) for when users connect or
+    disconnect from the BBS, or for when users connect, message, or disconnect
+    from the conference (CONV) bridge. Play a wave file on an event, or send
+    email on an event, or both - or whatever one program into a script file.
+
+16) Ditched the use of the GLIBC tmpnam() function - I'm tired of the link
+    warning saying it is a dangerous function - too much structural change
+    required to convert to mstemp(). I have created my own version based on
+    the GLIBC one, but stripped down, and without the warning messages.
+
+17) The 'update Domain.txt' logging is now 'switched off' by default :)
+
+18) The psignal(), getdate(), gettime() functions have been prefaced with 'j2'
+    prefix - done to avoid conflicts with any O/S calls having the same name.
+    No more of these #define j_psignal or j_getdate, or #undef getdate, etc.
+
+19) Compiler warnings have all been fixed (on my development systems), so
+    this release should now compile with little to no warnings anymore.
+
+20) Removed old and unused code from various source files.
+
+21) Reinstated the original 'checkstack' code, use -DCHKSTK in makefile !
+
+22) Cleaned up the 'config.h' file - created 2 distinct sections - one for
+    features specific to JNOS 2.0, the other for features from JNOS 1.11f.
+
+
+differences between JNOS 2.0f and 2.0f [Beta] - December 21, 2007
+-----------------------------------------------------------------
+
+1) Time to freeze things into an official version. I have not done alot
+   of development lately anyways, and if I am to ever update the original
+   jnos 1.11f documentation to where we are now, I need a frozen version.
+
+2) Added callsign validation for BBS login. I have to thank Barry (K2MF)
+   for the validation code. There is a new '#define MBX_CALLCHECK' in the
+   config.h file - enabled by default. Now only *valid* callsigns will be
+   accepted when you try to login to a JNOS server via telnet.
+
+3) The way the email address is being formatted in the aprsmail () function
+   has been changed. Apparently it is NOT legal to use the ( and ) characters
+   in the local part of the email address. Thanks to Janusz for finding this.
+
+4) I have fixed another HFDD bug, where incoming HF connects were not
+   seeing a mailbox prompt in some cases. I have also shortened the text
+   of the HFDD beacon - the "INTERNET GATEWAY" portion has been removed.
+
+5) Bumped up the version of NOSaprs to match this latest version of JNOS :-)
+
+
+differences between JNOS 2.0f [Beta] and 2.0e - Tuesday, June 12, 2007
+----------------------------------------------------------------------
+
+1) The JNOS (linux version) kernel has been revamped !
+
+   There was little choice - JNOS 2.0e would not compile on Fedora Core 6, or
+   Ubuntu, or any of the more recent linux distributions, unless you applied a
+   patch that I came out with last year. The good thing about this is that it
+   will still work on older distributions, like my Slackware 9.1 system.
+
+   The developers of the GLIBC have *fixed* things so that one can no longer
+   use the jmpbuf calls (setjmp/longjmp) as they have been traditionaly used
+   by the JNOS kernel. The reasoning was that these calls should never have
+   been allowed in the first place type of thing, etc, etc.
+
+   As a result, I have revamped the JNOS kernel to instead use the ucontext
+   calls (makecontext, swapcontext, setcontext, getcontext). Actually, this
+   was very easy to do, since the original JNOS 1.11f had most of the code
+   in place already - a prior developer was experimenting with Sun O/S.
+
+2) Fixed a bug in the forwarding code - a typing mistake I made when I put in
+   the 'telpac' option for JNOS 2.0e - FBB compressed forwarding was disabled
+   for ANY and ALL forwards to other remote systems asking for it. There was a
+   patch for it, but the patch never made it onto my website for some reason.
+
+3) The 'ax25 status', 'ax25 kick', and 'ax25 reset' commands have been
+   enhanced so that you can now pass the remote call instead of having to
+   type in the &AXB (that 8 digit hex number). This is a feature I have
+   long wanted to add. I always hated having to look up the &AXB, then
+   mess it up (or somehow forget it) while entering it seconds later.
+
+4) More improvements to the HFDD (HF Digital Device) code, including a new
+   feature where the drivers will automatically detect whether a KAM or PTC
+   is in host mode or not. If not, JNOS will try to put them into host mode,
+   using a user configurable init file (new feature) for each HF modem. The
+   code structure of both the KAM and PTC drivers were recently revamped.
+
+   The only major thing left to do is revamp the DXP38 driver. I have not had
+   alot of time to finish it - I felt it a priority to get a new release out
+   first (that being JNOS 2.0f), due to the kernel issue, and it has been a
+   while since a new version was releasted to the public.
+
+   If a BBS user or SYSOP enters the 'mbox' command, it used to be that it was
+   not very clear if an HFDD session was active or not. In most cases, all you
+   would see was a bunch of gibberish where the HFDD session was supposed to
+   be. I have fixed this,  so that any active sessions show up as 'Pactor'.
+
+   Keyboard mode (ie, the ability for a BBS user or SYSOP to connect to a
+   remote station via a HFDD port, then *chat*) has been removed for now. It
+   never worked very well, and there were USER issues that came up which I
+   had a hard time figuring out a solution for. Perhaps down the road ...
+
+   HFDD devices are strictly for forwarding with a remote BBS now, or
+   accepting calls FROM a remote station.
+
+   NEW and up-to-date documentation for this latest HFDD implementation.
+
+   As usual, work on the HFDD code is always ongoing, and experimental.
+
+   From this point on, you won't hear much more about the HFDD development,
+   as I am sure most of you are tired of hearing about it. That's all I had
+   been doing off and on during the middle of the year, and frankly, there
+   is not much left to do on it - It seems I am my only customer anyways.
+
+
+differences between JNOS 2.0e and 2.0d1 - Tuesday, April 18, 2006
+-----------------------------------------------------------------
+
+1) The NRR (netrom route record) code has been separated from the INP3 code,
+   and is now independent of the INP3 functionality. To include NRR support
+   in JNOS 2.0e, use '#define NRR' in the config.h file before compiling.
+
+   Here's an example of the NRR command at the BBS (mailbox) prompt :
+
+     Area: ve4klm (#1) >
+     nrr wa7v-2
+     *** route: VE4KLM-1 K7EK-8 WA7V-2* K7EK-8 VE4KLM-1
+     >
+
+2) Added PARAM_PACTOR to device parameters. The command :
+
+     param dxp38 17 1
+
+   can now be issued as follows (if the sysop does not like using a number) :
+
+     param dxp38 Pactor 1
+
+3) Finally - a true HFDD device (actually just a plain serial device). Up until
+   now, the DXP, SCS, and KAM modems had to be attached as an AX25 device, even
+   though they were not using the AX25 protocol. To keep the communications to
+   the modems from getting messed up, the sysop was required to disable the AX25
+   and MBOX beacons - a kludge of sorts. This change should stabilize the HFDD
+   serial interface quite a bit.
+
+   Previous to JNOS 2.0e, a typical autoexec.nos entry for a DXP38 would be :
+
+     attach asy ttyS1 - ax25 dxp38 4096 256 9600
+
+     ifconfig dxp38 description "Pactor 1 - 10.129.1 or 7077.1 LSB"
+
+     param dxp38 Pactor 1
+
+     ax25 bcport dxp38 off
+
+     mbox mport dxp38 off
+
+  With JNOS 2.0e, the following is now the proper way to do it :
+
+     attach asy ttyS1 - hfdd dxp38 4096 256 9600
+
+     ifconfig dxp38 description "Pactor 1 - 10.129.1 or 7077.1 LSB"
+
+     param dxp38 Pactor 1
+
+4) NOSaprs is now at version 2.0b, the biggest change is that I have
+   rewritten the APRS digi code to reflect the latest new-N paradigm,
+   and callsign substitution for WIDE1-1 and RELAY. Janusz (SP1LOP)
+   from Poland has confirmed that the code is working as it should.
+
+   Further more, experimental SSn-N code exists, and is currently
+   specific to Germany and Poland. Again, Janusz has confirmed this
+   code is working as it should. One can change this to suit their
+   own regions by modifying the 'aprsdigi.c' module. I will make
+   this configurable (autoexec.nos) in some future release.
+
+   Rewrote some of the code that does the NOSaprs 14501 webpage. One
+   should note that the generated URL string is slightly different in
+   this new version. For example the word, 'interface' is now 'ifc'.
+
+   Bumped up the maximum stack size for APRS Server to be safe.
+
+5) Removed timeout code that waits for an HFDD connection to get
+   established. The code was never written very well, and generated
+   some very undesireable effects if it kicked in at the wrong time.
+
+   When reading the forward.bbs file to establish a connect, the HFDD
+   code was improperly dealing with an EOL (end of line) read from the
+   forward.bbs file. This was causing truncation of the remote callsign
+   being used in the HFDD connect command. This is now fixed.
+
+6) JNOS 2.0e can now do basic TELPAC forwarding with WL2K systems. A new
+   option called 'telpac' has been added to the 'forward.bbs' file - ie:
+
+     ---------------
+     k4cjx
+     tcp <name of k4cjx's server> <port> telpac
+     @
+     @
+     @
+     +Callsign :
+     @
+     ..VE4KLM
+     +Password :
+     @
+     .<password>
+     k4cjx
+     ---------------
+
+7) Added CL_HFDD to interface types, so that I can clearly identify HFDD
+   interfaces. The HFDD interfaces will no longer show up as AX25 ports
+   when a BBS user issues the PORTS command, but instead will be listed
+   in their own category, for example :
+
+     Area: ve4klm (#1) >
+     Available AX.25 Ports:
+     wsc    :  internet link - VE4WSC
+     430    :  1200 Baud - 145.01 Mhz
+     Available HFDD Ports:
+     dxp38  :  Pactor 1 - 10.135.5 or 7077.1 LSB
+
+   Remember - HFDD ports are hostmode TNC ports, nothing to do with AX25.
+
+8) Solved a problem that has plagued JNOS (Linux) for a long time - user logs
+   onto the BBS, then enters the NODES command at the mailbox prompt, only to
+   see JNOS crash and restart.
+
+   It seems the qsort() call is very stack intensive, and can easily push the
+   maximum stack size when the NETROM Node table gets a bit too big. It turns
+   out that the Linux qsort() is a recursive function, using ALOT of stack if
+   it needs to. I did some searching and found an ANSI-C version of qsort that
+   is easy on the stack, and NON-RECURSIVE. I literally pasted the code into
+   a new JNOS function which I call j2qsort(), which JNOS now uses in place
+   of the Linux qsort().
+
+   Since I have done this, JNOS has yet to crash on me, whether I enter the
+   NODES command at the BBS prompt, or NETROM ROUTES or NETROM ROUTE INFO at
+   the F10 (console) screen. I can easily list 600+ node entries now.
+
+9) The beginning of some big changes ...
+
+   Most (if not all) NOS variants (and JNOS is no exception) use function calls
+   that have the same name as their UNIX counterparts - 'bind', 'recvfrom', and
+   'socket' are just a few examples, as is the NCURSES 'tputs' function.
+
+   To avoid clashes with the system calls, NOS variants have traditionally used
+   entries like the following to get around these :
+
+     #define connect j_connect
+     #define recvfrom j_recvfrom
+     #define tputs j_tputs
+
+   These are typically found in header files like socket.h and global.h.
+
+   Starting with JNOS 2.0e, I am removing the above method. Instead, I will
+   actually be renaming the JNOS functions to be clearly distinguishable from
+   their UNIX (or WINDOWS) counterparts. For example, the tputs() function in
+   JNOS would be renamed to j2tputs, and the '#define tputs j_tputs' removed.
+
+   Why ? I want the flexibility to call UNIX socket functions for example,
+   and not worry about conflicts with the JNOS ones. I may try to port JNOS
+   to Windows at some point, and there again I may want to directly access the
+   winsock libraries. I'm thinking the more self contained JNOS appears, the
+   easier these tasks will be for me down the road (I think so anyways).
+
+   I don't want people to get alarmed by all these changes. They're harmless,
+   and if anything, will contribute to a more stable JNOS 2.0 down the road. 
+
+10) Rewrote the locking code that I originally did for Netrom tables, then
+    added scalability for other tables like tcb, timers, usocks. After some
+    long term observation though, it has occurred to me that locks are for the
+    most part, not a big concern, since the type of task scheduling used by
+    NOS is such that operations on tables can only happen from one particular
+    process at a time anyways. BUT, I'm sure there are cases that *might*
+    require locks (when and if I ever find them), so the code stays ...
+
+
+differences between JNOS 2.0d1 and 2.0d
+---------------------------------------
+
+* Mostly bug fixes and diagnostics, no command or syntax changes.
+
+1) Fixed a situation where anyone who ran an APRS enabled JNOS binary, but
+   didn't have APRS configured, would see JNOS crash on each incoming APRS
+   frame.
+
+2) Bumped up the NOSaprs version to 2.0a, in preparation for providing once
+   again, the NOSaprs update kit for JNOS 1.11f and TNOS users.
+
+3) Fixed a situation where compressed data formats for the !, =, /, and @ DTI
+   values were not being recognized and passed by the validation routine.
+
+4) If we get a directed APRS query that we don't support, we now send a message
+   back to the user saying so. Previously, we did nothing.
+
+5) Fixed a situation where if 'aprs contact' was not defined in autoexec.nos,
+   and a 14501 page was requested, then JNOS would crash each time.
+
+6) INP3 - more work done, spent alot of time reviewing the code against the
+   linux version of INP3 by PE1RXQ. This code is not complete yet and should
+   not be used at this time. I regret having made such a big thing out of it
+   in the last release. Do NOT compile it into your binary (in other words,
+   make sure you '#undef INP3' in your config.h before you mass compile).
+
+   I'm not sure where the INP3 stuff will go at this stage. I simply have
+   not had the time to work on it lately. It's on the shelf for now !
+
+7) Some code cleanup here and there, the major one being replacement of all
+   malloc() calls in JNOS with mallocw() instead. Did some cutting down of
+   duplicate code in the kernel subroutines. Fixed a few bugs.
+
+8) Fixed the pactor connect code for the SCS PTC units to use just a plain
+   old 'C callsign'. There should be no port specifier. Previously I had used
+   the syntax 'C 1:callsign' instead, which is simply wrong for the HF mode.
+
+9) Added some experimental locking of the netrom route tables, plus a netrom
+   'lock conflicts' counter in the netrom status command. This was put in more
+   for me to investigate why the Nodes command crashes JNOS from time to time.
+
+
+differences between JNOS 2.0d and JNOS 2.0c5a
+---------------------------------------------
+
+1) The DOS release is once again at the same level as the Linux release, and
+   the makefile for the DOS release has been revamped (simplified). The Linux
+   release will now compile properly up to GCC versions 3.4.3 and 4.0.1.
+
+2) New subcommands added to the JNOS 'netrom' command :
+
+     netrom debug [on|off]
+
+     netrom nrr [callsign of a remote netrom node]
+
+     netrom l3rtt [callsign of neighbour] [interface]
+
+3) New command added to JNOS :
+
+     start inp3
+
+4) New command added to BBS user prompt :
+
+     nrr [callsign of a remote netrom node]
+
+   For example, here is a NRR request to on6dp from my system the other day :
+
+     Area: ve4klm (#1) >
+     nrr on6dp
+     Area: ve4klm (#1) >
+     *** route: VE4KLM VE4WSC WA7V-2 ON6DP* WA7V-2 VE4WSC VE4KLM
+     >
+
+5) New type of callsign list for APRS callsign filtering :
+
+     aprs calls micetorf [list of calls or patterns]
+
+6) Added a new directory for the APRS position database (a new project) :
+
+     ${JNOSROOTDIR}/aprs/db/positions
+
+7) Kantronics KAM Series Host Mode Driver (not completed yet)
+
+   A crude prototype Host Mode driver for Kantronics KAM modems now exists,
+   and a couple of milestones were set. I spent alot of time on this early
+   in the summer, however it's not ready for general use at this time.
+   
+   a) working single channel KAM hostmode implementation for JNOS 2.0, for
+      the packet (non-HF) mode. I had it working on an old KPC-2, as well as
+      on a version 5.0 KAM that I borrowed from a friend.
+
+   b) got it working with the AMTOR mode, using two backtoback KAM modems
+      talking to each other (one JNOS, the other Mailbox mode). I was able
+      to do some live testing as well, but nothing more has happened since.
+
+      Testing has been limited to AMTOR, because that is all I can do at this
+      time with the older KAM modems that I have here. Due to me having poor
+      equipment, lack of live testers on RF, and lack of time in general, the
+      KAM Host Mode driver is on the shelf for now. Adding the GTOR and PACTOR
+      modes to it will be a piece of cake, but until I get my hands on a KAM XL
+      or similar, this part of the project is on hold till further notice.
+
+   c) Special thanks to Mitch Hill - K1FH - AFA1HN, for helping out, and for
+      being a mentor of sorts with respect to AMTOR and QRG terminology :-)
+
+8) INP3 Support (alot has been done, but not completed yet)
+
+   JNOS 2.0d has partial support for INP3 stuff. Ideas and code fragments
+   have been borrowed from the INP3 Kernel Patches by PE1RXQ, and work is
+   ongoing. If you want INP3 support, then #define INP3 in config.h, then
+   recompile the source. This is VERY experimental, and not complete yet.
+
+   JNOS will recognize incoming RIF (Route Information Frames) from INP3
+   netrom neighbours, and update quality/return time values in the nodes
+   table (more needs to be done there). JNOS will respond to an L3RTT if
+   a INP3 netrom neighbour sends it one.
+
+   If you want JNOS to regularily send out it's own RIF and L3RTT to its
+   neighbours, then you can run the INP3 scheduler using 'start inp3'.
+
+   Again, this is experimental and incomplete, but I felt that I really
+   needed to get another JNOS update out to the masses. To see the INP3
+   stuff in action, turn on 'netrom debug' - see section 2) above. The
+   debugging goes to the master logfile at ${JNOSROOT}/log/DDMMMYY.
+
+   * It is possible that the INP3 code may add some stability to JNOS
+     configurations that have links to INP3 netrom neighbours. Then again,
+     it might just be my imagination, your results may vary, let me know.
+
+9) NRR (Netrom Route Record)
+
+   Even though NRR packets (Netrom Route Record) are not really part of the
+   INP3 stuff, it is currently available only if you '#define INP3' in the
+   config.h source file. I'll move it out at a later release.
+
+   Sysop and BBS user can now ask for a NRR to a remote node - see section
+   number 4) above. Also, if JNOS receives a NRR request from a neighbour, it
+   will now format the proper reply so that the remote user sees a path.
+
+A) Started work on a positional database, new module 'aprsposdb.c', and a new
+   directory under the APRS root directory, ie (/jnos/aprs/db/positions). Any
+   positions coming in from RF are to be added to the database. The idea is to
+   have NOSaprs read the database at any time, and generate a graphical map of
+   a region, with positions of stations overlayed on the map. Compiling this
+   feature depends on the #define/#undef APRS_POSIT_DB option in config.h. It
+   is currently undefined, the code sitting there for future development.
+
+B) Enabled monitor mode for the DXP38 when running in P-Mode (Pactor), so
+   I can observe more details (and Pactor traffic) when running HFDD server
+   mode on my DXP38 (ie, 'hfdd server dxp38 start').
+
+C) Added a feature (#define DEFAULT_SIGNATURE in config.h) that will add a
+   system signature to ALL outgoing mail from JNOS. If defined, JNOS will add
+   the contents of the '/jnos/spool/signatur/default.sig' file to the end of
+   all outgoing messages composed by any BBS user. In hindsight, I really have
+   to wonder why I bothered with this - perhaps to put disclaimer of sorts on
+   outgoing messages, to protect the sysop from users bending the rules ?
+
+D) Added a feature (#define MAIL_TRACE_USER_PORT in config.h) that will
+   add something like the following to all outgoing mail from JNOS :
+
+     X-JNOS-User_Port: <mbox status for particular user>
+
+   allowing the recipient of a messages to see what 'signed in' user sent it,
+   and on what JNOS port that user was connected, when message was composed.
+
+E) Problem in the REMOTE client command, it was crashing alot, the 'udpadd'
+   subcommand was not working properly. It turns out that I was not setting
+   the key information correctly for 'udpadd'. Problem should be fixed now.
+
+F) The APRS code is now able to gate MIC-E frames from the APRS IS (internet
+   system) to RF. A new callsign list was added, to control what stations are
+   allowed to have their MIC-E information sent out RF. See section 5) above,
+   note compiling this feature depends on the #define/#undef GATE_MICE_RF
+   directive in the config.h source file.
+
+G) Fixed some minor bugs, fixed a whole bunch of missing initializers, and
+   renamed the 'log' function to 'nos_log', to avoid conflicts with built-in
+   system libraries. This had to be done, partly because the more recent GCC
+   compilers were complaining about it. The 'log2' function was also dealt
+   with for similar reasons. Cleaned up some old code here and there.
+
+H) If you are using a JNOS binary that has NETROM compiled into it, and you
+   fail to 'attach netrom' (in other words, you're not interested in running
+   the netrom stuff), BUT you happen to have netrom neighbours that broadcast
+   nodes and stuff to you, very likely your JNOS will crash each time a nodes
+   broadcast comes in. The solution was either '#undef NETROM' in config.h,
+   or run the 'attach netrom' command in your autoexec.nos config file.
+
+   This is now fixed ! It was actually an existing problem before JNOS 1.11f
+
+
+differences between JNOS 2.0c5a and JNOS 2.0c5
+----------------------------------------------
+
+1) Syntax change for 'ax25 xdigi' - added optional callsign substitution
+
+     ax25 xdigi [source port] [dest port] [digi call] [substitute call]
+
+   The 'subsitute call' is optional.
+
+2) Proper changeover code for the SCS PTC modems added, so technically
+   the forwards to any WL2K system should now work just as good as the
+   Halcomm DXP modems.
+
+3) The 14501 page has evolved to include conventional packet stations
+   heard, current and past users connected or logged in. The layout has
+   also changed a little bit. This is an ongoing project ...
+
+   This requires a new 'jheard.o' in the makefile - see 'makefile.aprs',
+   distributed in this update.
+
+4) Added a new '#undef WELCOMEUSERS' for 'config.h', to cut down on the
+   stuff displayed to users that have just logged in or connected to the
+   system - see the file, 'config.h.dist', distributed in this update.
+
+5) Put the '#define APRS_DIGI' back into the 'aprs.h' header file, as it
+   was accidently undefined when I created the last official version.
+
+6) Removed some excessive entries from the JNOS log files, the new ax25
+   custom cross port digipeat rules had a bit too much logging enabled.
+
+
+differences between JNOS 2.0c5 and 2.0c4
+----------------------------------------
+
+1) New command (see documents for details)
+
+     ax25 xdigi [source port] [dest port] [digi call]
+
+2) Changes in the directory and file structure for the NOSaprs component
+
+     there is a new root directory for the NOSaprs, meaning you will have
+     to create a new directory, move some files, and delete the old. Here's
+     what you need to do (below). For illustration purposes I use '/jnos'
+     as the JNOS root directory (which is what most people use anyways).
+
+   a) create a new directory, '/jnos/aprs'
+
+   b) move the directory '/jnos/msgdb' to '/jnos/aprs/msgdb'
+
+   c) move the file '/jnos/spool/aprs/aprs.txt' to '/jnos/aprs/aprs.txt'
+
+   d) delete the directory '/jnos/Spool/aprs'
+
+   e) feel free to put the NOSaprs log file under the new root directory,
+      so for example in your autoexec.nos configuration file :
+
+        aprs log /jnos/spool/log/aprs.log
+
+      could be changed to :
+
+        aprs log /jnos/aprs/master.log
+
+-----
+
+Copyright (C) 2004-2023 by Maiko Langelaar / VE4KLM
+

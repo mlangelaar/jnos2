@@ -1,0 +1,320 @@
+
+ *** Do NOT apply this code over top of anything older then JNOS 2.0o ***
+
+ JNOS 2.0o.2 - update 03Apr2023
+ ------------------------------
+
+ You can now forward to IPV6 hosts, use '6' instead of 't', same format
+ as for IPV4 - you still have to use full length IPV6 addresses though.
+
+ The BBS user can now telnet to IPV6 hosts, still have to use full length
+ IPV6 addresses, sorry.
+
+ Both the JNOS log and 'tcp status' now show IPV6 info
+
+ Experimental function now in use to show short form IPV6 addresses
+  (not perfect, needs more work, but should help save some space)
+
+ I finally wrote an icmpv6_output() function, for DEST UNREACHABLE and
+ TIME EXCEED icmpv6 responses, those also probably need some work.
+
+ Still no IPV6 routing, still no IPV6 DNS, that will be a while ...
+  (in other words, JNOS is simply an IPV6 endpoint at this time)
+
+
+ JNOS 2.0o.1 - update 27Mar2023
+ ------------------------------
+
+ You can now use PUBLIC IPV6 allotments with JNOS, tested with VE3TOK (Bob),
+ and confirming internet connectivity between our systems. Some changes are
+ needed from the original configurations given several weeks ago. Due to the
+ nature of IPV6 and it's Network Discovery protocols, I had to create a TAP
+ interface for JNOS, since Network Discovery goes down to the link-layer.
+
+ In other words you can not use TUN for the IPV6 side of JNOS ...
+
+ Here is some information on how I configure it on my system.
+  (intentionally 'hiding' my public ipv6 addresses)
+
+ NOTE : except the default route, all IPV6 addresses are PUBLIC
+
+  a) Boot time creation of tap interface on linux side
+
+     ip tuntap add mode tap dev tun8
+     ip -6 addr add dev tun8 2600:3c03:[snip]:2 peer 2600:3c03:[snip]:3
+     ip link set tun8 up
+
+  b) Boot time setup of IPV6 routing on linux side
+
+      echo "enable ipv6 forwarding kernel level"
+      sysctl -w net.ipv6.conf.all.forwarding=1
+
+      echo "use ipv6 netfilter to put in forwarding rules"
+      /usr/sbin/ip6tables --flush
+      /usr/sbin/ip6tables --flush -t nat
+      ip6tables -A FORWARD -i eth0 -o tun8 -j ACCEPT
+      ip6tables -A FORWARD -i tun8 -o eth0 -j ACCEPT
+
+      echo "have to put back the default route"
+      route -6 add default gw fe80::1 dev eth0
+
+   My system runs on linode, this is how I setup my PUBLIC access, the
+   rules of course should be a bit tighter, but this is what I started
+   with, pretty simple and straight forward, there's no radvd running.
+
+  c) autoexec.nos entries
+
+     ipv6 addr 2600:3c03:[snip]:0003
+     attach tun tap0 1514 1 tun8
+     #trace tap0 0x211 tap0_26Mar2023.log 1000
+     ipv6 iface tap0
+     start telnet -6
+
+   NOTE : internal JNOS ethernet MAC is hardcoded -> 54:4e:45:00:00:00
+
+   Make sure the TAP interface 'name' starts with 'tap' !
+
+ Still to do -> axipv6, axudpv6, forward.bbs support, and lots more ...
+
+ There is still no DNS for IPV6 host names, and JNOS does not recognize short
+ form IPV6 addresses, that will come eventually, but not today - see further
+ down in the original notes what you can do at this time.
+
+
+ JNOS 2.0o - The start of IPV6 support for JNOS 2.0 project
+ ----------------------------------------------------------
+
+ This was about a months worth of work (off and on), starting end of January,
+ and of course it is just the beginning, since there is more to do. JNOS can
+ now trace and handle incoming IPV6 traffic, just ping and telnet right now.
+
+ I have to thank Bob Tenty, VE3TOK, for pushing me to do this project, and for
+ all the testing, debugging, hair pulling he has done to make it to this point
+ where it's actually usable for something. It is a very interesting project.
+
+ There is no IPV6 route table in JNOS right now, it's just an IPV6 endpoint
+ at this early stage of development, so you MUST therefore set an interface
+ if you expect any IPV6 response from JNOS.
+
+ You don't have to set an IPV6 address, JNOS defaults to :
+
+   fd00:0004:0000:0000:0000:0000:0000:0002
+
+ Note : short form IPV6 addressing is not supported (yet) on the JNOS side
+  (so stick with the full length addressing for now)
+
+ But of course on the linux side, you can do stuff like this :
+
+    telnet fd00:4::2
+
+    ping fd00:4::2
+
+
+ Download and Compile
+ --------------------
+
+ The IPV6 support is now part of JNOS 2.0o and future releases ...
+
+ Preconfigure TUN interface(s) on linux side
+ -------------------------------------------
+
+ You only need to do this at boot time, make sure you pick tun devices that
+ are not already in use by other programs or servers, such as openvpn. Why
+ am I doing this ? Because I run my JNOS as a non-root user, for security.
+
+ For IPV4
+
+    ip tuntap add mode tun dev tun5
+    ifconfig tun5 192.168.4.200 pointopoint 192.168.4.201 mtu 1500 up
+
+    # for JNOS side, use 'attach tun tun0 1500 0 tun5' in autoexec.nos
+
+ For IPV6
+
+    ip tuntap add mode tun dev tun3
+    ip -6 addr add dev tun3 fd00:4::1/64 peer fd00:4::2/64
+    ip link set tun3 up
+
+    # for JNOS side, use 'attach tun tun1 1500 1 tun3' in autoexec.nos
+
+ You don't have to have separate tun interfaces, that's simply the way I chose
+ to do it. Bob uses just one tun interface for both IPV4 and IPV6, and it works
+ just fine. Note, the above examples match with my autoexec.nos just below ...
+
+
+ Autoexec.nos
+ ------------
+
+ This is my test configuration - I use a separate TUN iface for IPV6 :
+
+     tcp mss 1460
+     tcp window 5840
+     tcp maxwait 30000
+     tcp retries 5
+
+     tcp syndata on
+
+     ip address 192.168.4.201
+
+     hostname ve4klm
+     ax25 mycall ve4klm
+
+     attach tun tun0 1500 0 tun5
+
+     ifconfig tun0 ipaddress 192.168.4.201
+     ifconfig tun0 netmask 255.255.255.0
+     ifconfig tun0 mtu 1500
+
+     attach tun tun1 1500 1 tun3
+
+     ipv6 addr fd00:0004:0000:0000:0000:0000:3200:0002
+     ipv6 iface tun1
+
+     start telnet
+     start telnet -6
+
+     mbox MFAexclude 127.0 192. 10.8.10.
+
+     mbox tmsg "  * for access, email (Mike) - maiko@pcsinternet.ca\n"
+
+
+ What IPV6 stuff can you do with this right now
+ ----------------------------------------------
+
+ a) telnet (ipv6) to JNOS and list users
+
+    bash-5.1# !telnet
+    telnet fd00:0004:0000:0000:0000:0000:0000:0002
+    Trying fd00:4::2...
+    Connected to fd00:0004:0000:0000:0000:0000:0000:0002.
+    Escape character is '^]'.
+
+    JNOS (ve4klm)
+
+      * for access, email (Mike) - maiko@pcsinternet.ca
+
+    login: ve4pkt
+    Password: 
+    [JNOS-2.0n.dev-B1FHIM$]
+
+    You have 0 messages.
+
+    Please type 'REGISTER' at the > prompt.
+    Area: ve4pkt Current msg# 0.
+    ?,A,B,C,CONV,D,E,F,H,I,IH,IP,J,K,L,M,N,NR,O,P,PI,R,S,T,U,V,W,X,Z >
+    mbox
+    Users:
+    Telnet   (ve4klm @ 192.168.4.200)  -> Idle
+    Telnet   (ve4pkt @ fd00:0004:0000:0000:0000:0000:0000:0001)  -> Idle
+
+    Area: ve4pkt Current msg# 0.
+    ?,A,B,C,CONV,D,E,F,H,I,IH,IP,J,K,L,M,N,NR,O,P,PI,R,S,T,U,V,W,X,Z >
+
+ b) telnet (regular ipv4) to JNOS and list user
+
+    bash-5.1# telnet 192.168.4.201
+    Trying 192.168.4.201...
+    Connected to 192.168.4.201.
+    Escape character is '^]'.
+
+    JNOS (ve4klm)
+
+      * for access, email (Mike) - maiko@pcsinternet.ca
+
+    login: ve4klm
+    Password: 
+    [JNOS-2.0n.dev-B1FHIM$]
+    You have 26 messages  -  0 new.
+    Area: ve4klm (#1) >
+
+ c) console status showing mailbox users
+
+    jnos> mbox
+    Users:
+    Telnet   (ve4klm @ 192.168.4.200)  -> Idle
+    Telnet   (ve4pkt @ fd00:0004:0000:0000:0000:0000:0000:0001)  -> Idle
+
+ d) pinging JNOS from linux side
+
+    bash-5.1# ping 192.168.4.201
+    PING 192.168.4.201 (192.168.4.201) 56(84) bytes of data.
+    64 bytes from 192.168.4.201: icmp_seq=1 ttl=254 time=0.143 ms
+    64 bytes from 192.168.4.201: icmp_seq=2 ttl=254 time=0.136 ms
+    ^C
+    --- 192.168.4.201 ping statistics ---
+    2 packets transmitted, 2 received, 0% packet loss, time 1055ms
+    rtt min/avg/max/mdev = 0.136/0.139/0.143/0.003 ms
+
+    bash-5.1# ping fd00:0004:0000:0000:0000:0000:0000:0002
+    PING fd00:0004:0000:0000:0000:0000:0000:0002(fd00:4::2) 56 data bytes
+    64 bytes from fd00:4::2: icmp_seq=1 ttl=63 time=0.084 ms
+    64 bytes from fd00:4::2: icmp_seq=2 ttl=63 time=0.078 ms
+    64 bytes from fd00:4::2: icmp_seq=3 ttl=63 time=0.140 ms
+    ^C
+    --- fd00:0004:0000:0000:0000:0000:0000:0002 ping statistics ---
+    3 packets transmitted, 3 received, 0% packet loss, time 2070ms
+    rtt min/avg/max/mdev = 0.078/0.100/0.140/0.027 ms
+
+ e) trace session showing IPV6 traffic
+
+    Mon Feb  6 11:22:01 2023 - tun1 recv:
+    IPV6: len 104 next header 58 hop limit 64 prot ICMP
+     src fd00:0004:0000:0000:0000:0000:0000:0001
+     dst fd00:0004:0000:0000:0000:0000:0000:0002
+    0000  60 0f e1 9b 00 40 3a 40 fd 00 00 04 00 00 00 00  `.a..@:@}.......
+    0010  00 00 00 00 00 00 00 01 fd 00 00 04 00 00 00 00  ........}.......
+    0020  00 00 00 00 00 00 00 02 80 00 a3 69 71 63 00 01  ..........#iqc..
+    0030  39 37 e1 63 00 00 00 00 8e 3c 09 00 00 00 00 00  97ac.....<......
+    0040  10 11 12 13 14 15 16 17 18 19 1a 1b 1c 1d 1e 1f  ................
+    0050  20 21 22 23 24 25 26 27 28 29 2a 2b 2c 2d 2e 2f   !"#$%&'()*+,-./
+    0060  30 31 32 33 34 35 36 37                          01234567
+
+    Wed Mar  1 15:41:31 2023 - tun1 sent:
+    IPV6: len 138 next header 6 hop limit 1 prot TCP
+     src fd00:0004:0000:0000:0000:0000:3200:0002
+     dst fd00:0004:0000:0000:0000:0000:0000:0001
+    TCP: 23->57962 Seq x5b187000 Ack xdea4af42 CE ACK PSH SYN
+     Wnd 5840 MSS 1460 Data 74
+    0000  60 00 00 00 00 62 06 01 fd 00 00 04 00 00 00 00  `....b..}.......
+    0010  00 00 00 00 32 00 00 02 fd 00 00 04 00 00 00 00  ....2...}.......
+    0020  00 00 00 00 00 00 00 01 00 17 e2 6a 5b 18 70 00  ..........bj[.p.
+    0030  de a4 af 42 60 5a 16 d0 6d 3e 00 00 02 04 05 b4  ^$/B`Z.Pm>.....4
+    0040  0d 0a 4a 4e 4f 53 20 28 76 65 34 6b 6c 6d 29 0d  ..JNOS (ve4klm).
+    0050  0a 0d 0a 20 20 2a 20 66 6f 72 20 61 63 63 65 73  ...  * for acces
+    0060  73 2c 20 65 6d 61 69 6c 20 28 4d 69 6b 65 29 20  s, email (Mike)
+    0070  2d 20 6d 61 69 6b 6f 40 70 63 73 69 6e 74 65 72  - maiko@pcsinter
+    0080  6e 65 74 2e 63 61 0d 0a 0d 0a                    net.ca....
+
+
+ Disabling IPV6
+ --------------
+
+ Just comment out the 'ipv6 iface xxx' command.
+
+ This keeps JNOS from processing IPV6 packets, right at the front door.
+
+ Note that IPV6 traffic will still show up in any active trace sessions.
+
+
+ Why is the PING response time slow
+ ----------------------------------
+
+ Bob reminded me ; if you have an active trace on your tun interface(s), you
+ will see much slower response times on PING - and telnet for that matter.
+
+
+ Benefit of using this code (when it becomes official)
+ -----------------------------------------------------
+
+ Even if you are not using IPV6 or have no desire to use it, this version
+ of JNOS prescreens IP traffic right at the front door. With this version,
+ you can immediately discard IPV6 traffic - just don't define ipv6 iface.
+
+ Previous versions of JNOS allow ANY form of IP into the code, including
+ even non IP garbage that might appear, so even if one just incorporates
+ a variation of the ip_preroute() function, you still benefit from that.
+
+-----
+
+ March 3, Maiko Langelaar, VE4KLM
+

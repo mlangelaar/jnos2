@@ -1,0 +1,13 @@
+
+ OBJ2RF
+
+  allow JNOS to gate OBJECTS it hears on the APRS (IS) Internet System, to RF,
+  but only originating from certain callsigns and or callsign patterns.
+
+ For example to gate just objects from AB9FT and calls starting with VE4 :
+
+    aprs calls obj2rf AB9FT VE4
+
+ IF you want to gate traffic to RF - BE VERY CAREFULL with these filters !!!
+   (you do NOT want to FLOOD your local frequencies with solid traffic)
+

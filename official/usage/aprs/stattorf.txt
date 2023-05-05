@@ -1,0 +1,14 @@
+
+ STATTORF
+
+  allow JNOS to gate STATISTICS it hears on the APRS (IS) Internet System, to
+  RF, but only originating from certain callsigns and or callsign patterns.
+
+ For example, to gate just statistic from callsigns starting with VE4
+ and VA4, and from the full callsigns VE3HDU and VE3JJA :
+
+    aprs calls stattorf VE4 VA4 VE3JJA VE3HDU
+
+ IF you want to gate traffic to RF - BE VERY CAREFULL with these filters !!!
+   (you do NOT want to FLOOD your local frequencies with solid traffic)
+

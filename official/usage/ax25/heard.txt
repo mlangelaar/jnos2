@@ -1,0 +1,19 @@
+
+Display stations heard on ax25 interfaces, or SET a new heard list for a port
+
+ Usage : ax heard *[ dest | digid | new=<name> ] all | <iface>
+
+         ax heard save | load *[ filename ]
+
+  * denotes an optional single argument, some examples below :
+
+   ax25 h all            traditional syntax, but requires 'all' for ALL ports
+   ax25 h digid rp0      NEW show stations heard via a digipeater on port rp0
+   ax25 h ax0            traditional syntax, show heard on port ax0
+   ax25 h dest all       show destination calls on ALL ports
+
+   ax25 h new=17m rp0    create or switch to heard list 17m_rp0 for port rp0
+
+ Note : 'ax25 dest' and 'ax25 hearddest' are no more - use 'ax25 heard' now.
+  (the default save or load file is 'AxHeardFile' in JNOS root directory)
+

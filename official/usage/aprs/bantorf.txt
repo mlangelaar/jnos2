@@ -1,0 +1,13 @@
+
+ BANTORF
+
+ tell JNOS to never gate anything it hears on the APRS (IT) Internet System,
+ to RF, for certain callsigns and or callsign patterns.
+
+ For example to ban any APRS (IS) content with my call from going out RF :
+
+    aprs calls bantorf VE4KLM
+
+ IF you want to gate traffic to RF - BE VERY CAREFULL with these filters !!!
+   (you do NOT want to FLOOD your local frequencies with solid traffic)
+

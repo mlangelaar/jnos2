@@ -1,0 +1,26 @@
+#
+# 28May2020, Maiko (VE4KLM), an attempt to get away from hardcoded usage
+# functions, user can customize to their own needs or wants. These files
+# are read into JNOS using new function found in getusage.c source file.
+#
+# I just got tired of hardcoding them. The recompiles, restarts, wasting
+# my time and energy trying to nail down exact words, enough already ...
+#
+
+  for daily (DDMMMYY) rotating log, use : log file daily
+  for continuous log, use : log file <filename>
+  to turn logging on or off, use : log on | off
+
+  to add a trigger, use : log trigger add "pattern" "command"
+  to list all triggers, use : log trigger list
+  to show queued events, use : log trigger show
+  to delete a trigger, use : log trigger delete <index>
+    where index is taken from the listing
+
+  use : log trigger timer <seconds> to set how often the queue is checked
+    omit seconds parameter to display time left before next queue check
+
+  examples :
+    log trigger add "error|" "sh ./notifyme.sh"
+    log trigger add "ve3cgr&timed out&" "mailmsg ve4klm ve3cgr timeout"
+

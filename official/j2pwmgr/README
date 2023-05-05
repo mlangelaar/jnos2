@@ -1,0 +1,45 @@
+
+/*
+ * 30Sep2019, Maiko (VE4KLM), libcrypt (-lcrypt) is no more with the latest
+ * distributions of linux, so I am tossed whether to replace it or just get
+ * rid of the encryption part, I mean the password is mangled to ascii 1 and
+ * 0 values to begin with, so anyone looking at the password file will still
+ * not be able to easily figure out the passwords stored in the file. So for
+ * the time being, there is no more encryption of this file.
+ *
+ * The file has not changed, encryption has simply been disabled with :
+ *
+ *   #ifdef ENCRYPT_PASSWORD_BLOCK
+ *
+ * It just means you will have to wipe the /jnos/users directory and run
+ * the j2pwmgr utility again to recreate the Winlink Secure Login passwd
+ * information. Unfortunately the files in the directory from before are
+ * not going to be compatible with this newest version, sorry for that.
+ *
+ * --------------------------------------------------------------------
+ *
+ * New way to store passwords for JNOS related operations, this is came
+ * about from the need to keep the passwords for Winlink Secure Login safe
+ * from prying eyes. Then I got to thinking perhaps it's time to start doing
+ * the same for general JNOS passwords (ie, ftpusers, popusers, etc) in the
+ * near future (but not yet). That is why I introduced the 'type' field, 0
+ * for Winlink Secure Login, and 1 for general JNOS passwords and so on.
+ *
+ * Designed and Coded during October of 2015 by Maiko Langelaar (VE4KLM)
+ *
+ * Compile & Run :
+ *
+ *    cc -DNOJ2STRLWR j2pwmgr.c j2pwrtns.c -o j2pwmgr
+ *
+ *  NOTE (30Sep2019), removed '-lcrypt' since we can't use it anymore !
+ *
+ *    ./j2pwmgr
+ *
+ * Add -DTESTPROGRAM to the cc arguments to compile and run test program.
+ *
+ * Based on ideas and code found in code forums and crypt man pages, including
+ * a post from 'Wayne C. Morris, Dec 16, 2004' to 'thecodingforums', under the
+ * thread 're-right-way-of-using-setkey-3-and-encrypt-3.436192', very useful.
+ *
+ */
+

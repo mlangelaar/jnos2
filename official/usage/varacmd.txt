@@ -1,0 +1,18 @@
+
+ Basic command set to control the EA5HVK VARA Software Modem
+  (please watch the JNOS log for command status for now)
+
+ CONNECT [Source Call] [Destination Call]
+  Initiate a connect to the Destination Call
+ DISCONNECT
+  Disconnect the current communication session
+ ABORT
+  Immediately abort an ARQ connection (dirty disconnect)
+
+  BW500
+   Set VARA HF to 500Hz Narrow mode
+  BW2300
+   Set VARA HF to 2300Hz Standard mode
+  BW2750
+   Set VARA HF to 2750Hz Tactical mode
+

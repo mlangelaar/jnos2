@@ -1,0 +1,31 @@
+
+ipv6.h - added j2_ipv6_asc2ntwk(), ipv6shortform() prototypes.
+ipv6misc.c - two new functions, j2_ipv6_asc2ntwk(), ipv6shortform().
+netuser.c - new function pinetv6 (for JNOS logfile).
+netuser.h - added pinetv6() prototype.
+telnet.c - replaced bunch of code with new j2_ipv6_asc2ntwk() func.
+forward.c - new '6' option to telnet forward to IPV6 hosts.
+   (uses the new j2_ipv6_asc2ntwk() as well)
+mboxgate.c - let BBS user telnet to ipv6 hosts.
+ (could be cleaner)
+tcpcmd.c - 'tcp status' now shows ipv6 socket info.
+mboxcmd.c - 'mbox' user ipv6 addresses now in short form.
+  (not perfect, needs more work, but definitely shorter length)
+ipv6route.c - commented out excessive debug log() calls, finally
+ using new icmpv6_output() so I can send ICMPV6_DEST_UNREACHABLE
+   or ICMPV6_TIME_EXCEED messages back to sender. (needs work).
+ipv6.c - commented out excessive debug log() calls.
+icmpv6.c - finally wrote the icmpv6_output() function, commented
+ out excessive debug log() calls, figured out checksum issues.
+ipv6iface.c - commented out excessive debug log() calls.
+ipv6hdr.c - commented out excessive debug log() calls.
+main.c - log() should now show ipv6 socket information.
+sockutil.c - added ipv6 support to the psocket() call.
+icmpv6.h - added prototype for icmpv6_output() func.
+makefile - added new ipv6misc.o object, changed configure vers
+configure - changed version to match makefile
+mboxmail.c - ipv6 address showing in 'mbox sid' was being truncated
+ (but now, tcp port is included, which I didn't want, no harm, fix it later)
+
+* 04Apr2023, Maiko Langelaar (VE4KLM)
+

@@ -1,0 +1,63 @@
+
+Significant work on UDP sockets in order to get DNS client side working
+
+ domain.h - added extra 'ipver' argument to add_nameserver() function, and
+  changed addr6, from a pointer, to an actual IPV6 sized address buffer.
+
+ usock.h - added new 'family' member to usock structure, since it is getting
+   difficult to add IPV6 support for TYPE_UDP, peername is not relevant, and
+    there's no easy way to tell in certain parts of the code, if I'm dealing
+     with IPV4 or IPV6 UDP (datagram) traffic
+
+ ipv6.h - using extern unsigned char myipv6addr[16] alot more everywhere
+
+ udphdr.c - new htonudpv6(), IPV6 version of htonudp() function
+
+ ipdump.c - new calls to new udp_dumpv6() function
+
+ udpdump.c - new udp_dumpv6() and breakout function for common code
+   with the original udp_dump() function
+
+ udp.h - added new 'socket6' member to udp_cb (UDP callback) structure,
+  added function prototypes for new udp_inputv6(), htonudpv6(), send and
+   recv udpv6 functions, important to catch these prototypes or crash !
+
+ ipv6link.c - took me a bit to figure out why I was not receiving UDP V6
+  traffic, would help if I had created and linked in new udp_inputv6()
+   function, at the very end when all the other coding was 'completed'
+
+ udp.c - lots of new IPV6 code to support the whole UDP thing, and
+  logging of UDP 'no listener' traffic
+
+ socket.c - adding support for TYPE_UDP (DATAGRAM) sockets
+
+ domhdr.c - support for type AAAA records
+
+ domain.c - adding IPV6 name servers, talking to them, support type AAAA
+  (domain query works, new resolve6() function, and no more faking out NLP)
+
+ netuser.h - prototype the new resolve6() function
+
+ icmpcmd.c - can now use domain names for console and bbs prompt pings
+  (will try ipv6 first, then fall back to ipv4)
+
+  telnet.c - can now use domain names for console telnet
+   (same thing will try ipv6 first, then fall back to ipv4)
+
+  mboxgate.c - can now use domain name for bbs prompt telnet
+   (same thing will try ipv6 first, then fall back to ipv4)
+
+  forward.c - can now use domain name in spool/forward.bbs entries
+   (removed the '6' option, just 't' again, will try ipv6 first,
+     then fallback to ipv4)
+
+  Note : IF 'ipv6 iface' is not configured, then it won't try ipv6 first !
+
+  icmpv6.h - cleaned up some definitions
+
+  hop.c - support for IPV6
+
+  tcpin.c - logging of TCP 'no listener' traffic
+
+  main.c - nos_log_peerless() now works with IPV6
+
