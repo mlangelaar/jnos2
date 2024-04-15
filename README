@@ -5,14 +5,14 @@
 
    https://www.langelaar.net/jnos2
 
- Copyright (C) 2004-2023 by Maiko Langelaar, VE4KLM
+ Copyright (C) 2004-2024 by Maiko Langelaar, VE4KLM
 
- *** BIG NEWS - JNOS 2.0o now boasts it's own IPV6 stack ***
+April 15, 2024
+--------------
 
-May 5, 2023
----------------
+ I am in the process of putting together a new official release
 
- Uploaded latest official and development areas
+ As a result, all existing code on my github account is deleted.
 
- Official version is now JNOS 2.0o.2
+ The changes are too many to update the repository, stay tuned ...
 
